@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mobile 2D Action</title>
+  <style>
+    body { margin: 0; background: #111; color: #fff; font-family: sans-serif; text-align: center; }
+    canvas { width: 100%; max-width: 1280px; height: auto; background: #22262e; display: block; margin: 10px auto; }
+    button { padding: 12px 20px; font-size: 16px; border: none; border-radius: 8px; background: #38bdf8; color: #000; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="1280" height="720"></canvas>
+  <button id="recBtn">Xuất Video (5 giây)</button>
+  <p id="status">Sẵn sàng</p>
+
+  <script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const btn = document.getElementById("recBtn");
+    const status = document.getElementById("status");
+
+    let frame = 0;
+
+    function drawFighter(x, y, color, dir, lunge) {
+      ctx.save();
+      ctx.translate(x + lunge * dir, y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 6;
+      ctx.lineCap = "round";
+
+      ctx.beginPath(); ctx.arc(0, -86, 16, 0, Math.PI * 2); ctx.stroke(); // Đầu
+      ctx.beginPath(); ctx.moveTo(0, -70); ctx.lineTo(0, -26); ctx.stroke(); // Thân
+
+      const stride = Math.sin(frame * 0.25) * 16;
+      ctx.beginPath();
+      ctx.moveTo(0, -26); ctx.lineTo(-18 - stride, 0);
+      ctx.moveTo(0, -26); ctx.lineTo(18 + stride, 0);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, -58);
+      ctx.lineTo(34 * dir, -66 - lunge * 0.35);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function loop() {
+      frame++;
+      const cycle = frame % 90;
+      const lunge = cycle < 14 ? Math.sin((cycle / 14) * Math.PI) * 75 : 0;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Sàn đấu
+      ctx.fillStyle = "#181b20";
+      ctx.fillRect(0, 500, canvas.width, 220);
+
+      drawFighter(430, 500, "#a855f7", 1, lunge);
+      drawFighter(850, 500, "#f8fafc", -1, 0);
+
+      // Vệt chém
+      if (cycle >= 10 && cycle <= 24) {
+        const alpha = 1 - (cycle - 10) / 14;
+        ctx.save();
+        ctx.strokeStyle = "#38bdf8";
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = 10 * alpha;
+        ctx.beginPath();
+        ctx.arc(640, 445, 95, -0.75, 0.75);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // Ghi hình trực tiếp từ Canvas trên điện thoại
+    btn.onclick = () => {
+      const stream = canvas.captureStream(60);
+      const chunks = [];
+      const recorder = new MediaRecorder(stream);
+
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "action-video.webm"; // Trên iOS Safari sẽ tự ra định dạng hỗ trợ (mp4/mov)
+        a.click();
+        status.textContent = "Đã tải video xong!";
+      };
+
+      frame = 0; // Reset về đầu cảnh
+      recorder.start();
+      status.textContent = "Đang xuất video 5 giây...";
+      setTimeout(() => recorder.stop(), 5000);
+    };
+  </script>
+</body>
+</html>
