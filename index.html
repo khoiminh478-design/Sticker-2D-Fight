@@ -1,137 +1,66 @@
-<!DOCTYPE html>
+https://khoiminh478-design.github.io/Sticker-2D-Fight/<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>2D Stickman Anime Fight - 30s + Web Audio SFX</title>
+  <title>2D Stickman Anime Fight - 30s</title>
   <style>
-    :root {
-      --bg: #0f1115;
-      --panel: #181b22;
-      --border: #2a303c;
-      --text: #f1f5f9;
-      --muted: #94a3b8;
-      --accent: #7c3aed;
-      --cyan: #38bdf8;
-      --red: #ef4444;
-      --green: #10b981;
-    }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0f1115;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 10px;
-      gap: 10px;
+      padding: 8px;
+      gap: 8px;
     }
     .stage-wrap {
       width: 100%;
       max-width: 1280px;
       aspect-ratio: 16 / 9;
       background: #23272c;
-      border: 1px solid var(--border);
+      border: 1px solid #2a303c;
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65);
       position: relative;
     }
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+    canvas { width: 100%; height: 100%; display: block; }
     .controls {
       width: 100%;
       max-width: 1280px;
-      background: var(--panel);
-      border: 1px solid var(--border);
+      background: #181b22;
+      border: 1px solid #2a303c;
       border-radius: 10px;
-      padding: 10px 14px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-    }
-    .timeline-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    input[type="range"] {
-      flex: 1;
-      accent-color: var(--cyan);
-      height: 6px;
-      background: #2b313d;
-      border-radius: 999px;
-      cursor: pointer;
-    }
-    .time-label {
-      font-variant-numeric: tabular-nums;
-      font-size: 13px;
-      color: var(--muted);
-      min-width: 96px;
-      text-align: right;
-    }
-    .btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
       gap: 8px;
+      position: relative;
+      z-index: 10;
     }
+    .timeline-row { display: flex; align-items: center; gap: 8px; }
+    input[type="range"] { flex: 1; accent-color: #38bdf8; height: 6px; }
+    .time-label { font-size: 12px; color: #94a3b8; min-width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
     button {
       border: none;
       border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 14px;
+      padding: 10px 12px;
+      font-size: 13px;
       font-weight: 700;
-      cursor: pointer;
       color: #fff;
       background: #29303d;
-      transition: transform 0.08s ease, opacity 0.15s ease;
+      cursor: pointer;
     }
-    button:active {
-      transform: scale(0.97);
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    #playBtn {
-      background: var(--accent);
-      min-width: 105px;
-    }
-    #soundBtn {
-      background: var(--green);
-      color: #06281e;
-    }
-    #soundBtn.muted {
-      background: #334155;
-      color: #cbd5e1;
-    }
-    #exportBtn {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-      margin-left: auto;
-    }
-    #statusText {
-      font-size: 12px;
-      color: var(--cyan);
-      width: 100%;
-    }
-    @media (max-width: 600px) {
-      body { padding: 6px; gap: 8px; }
-      .controls { padding: 8px 10px; }
-      button { padding: 9px 11px; font-size: 13px; }
-      #exportBtn { margin-left: 0; flex: 1; }
-    }
+    #playBtn { background: #7c3aed; min-width: 86px; }
+    #soundBtn { background: #10b981; color: #052e16; }
+    #soundBtn.muted { background: #334155; color: #cbd5e1; }
+    #exportBtn { background: #dc2626; margin-left: auto; }
+    #statusText { font-size: 12px; color: #38bdf8; width: 100%; }
   </style>
 </head>
 <body>
@@ -145,420 +74,451 @@
       <span class="time-label" id="timeDisplay">00.00s / 30.00s</span>
     </div>
     <div class="btn-row">
-      <button id="playBtn">Play</button>
-      <button id="replayBtn">Replay (0s)</button>
-      <button id="soundBtn">Âm thanh: BẬT</button>
-      <button id="exportBtn">Xuất Video 30s (Có Tiếng)</button>
-      <div id="statusText">Chạm "Play" hoặc "Xuất Video 30s" để kích hoạt âm thanh trên điện thoại</div>
+      <button id="playBtn" type="button">Play</button>
+      <button id="replayBtn" type="button">Replay</button>
+      <button id="soundBtn" type="button">Tiếng: BẬT</button>
+      <button id="exportBtn" type="button">Xuất Video 30s</button>
+      <div id="statusText">Sẵn sàng • Bấm Play để xem & nghe hiệu ứng âm thanh</div>
     </div>
   </div>
 
   <script>
-    const canvas = document.getElementById("stage");
-    const ctx = canvas.getContext("2d");
-    const W = 1280;
-    const H = 720;
-    const FLOOR_Y = 545;
-    const TOTAL_DURATION = 30.0;
-    const FPS = 60;
+    window.onerror = function (msg, url, line) {
+      var st = document.getElementById("statusText");
+      if (st) {
+        st.style.color = "#f87171";
+        st.textContent = "Lỗi: " + msg + " (dòng " + line + ")";
+      }
+    };
 
-    // UI Controls
-    const playBtn = document.getElementById("playBtn");
-    const replayBtn = document.getElementById("replayBtn");
-    const soundBtn = document.getElementById("soundBtn");
-    const exportBtn = document.getElementById("exportBtn");
-    const scrubber = document.getElementById("scrubber");
-    const timeDisplay = document.getElementById("timeDisplay");
-    const statusText = document.getElementById("statusText");
+    var canvas = document.getElementById("stage");
+    var ctx = canvas.getContext("2d");
+    var W = 1280, H = 720, FLOOR_Y = 545, TOTAL_DURATION = 30.0, FPS = 60;
 
-    let currentTime = 0;
-    let isPlaying = false;
-    let isExporting = false;
-    let isMuted = false;
-    let lastRaf = performance.now();
+    var playBtn = document.getElementById("playBtn");
+    var replayBtn = document.getElementById("replayBtn");
+    var soundBtn = document.getElementById("soundBtn");
+    var exportBtn = document.getElementById("exportBtn");
+    var scrubber = document.getElementById("scrubber");
+    var timeDisplay = document.getElementById("timeDisplay");
+    var statusText = document.getElementById("statusText");
 
-    // =========================================================================
-    // 0. WEB AUDIO API PROCEDURAL SOUND ENGINE (SFX + BASS PULSE + RECORDER STREAM)
-    // =========================================================================
-    const SFX = {
-      ctx: null,
-      masterGain: null,
-      destNode: null,
-      noiseBuffer: null,
-      lastTickTime: -1,
-      triggered: new Set(),
+    var currentTime = 0, isPlaying = false, isExporting = false, isMuted = false;
+    var lastRaf = performance.now();
 
-      init() {
+    // Polyfill an toàn cho trình duyệt không hỗ trợ ctx.roundRect
+    function drawRoundRect(x, y, w, h, r) {
+      if (r > w / 2) r = w / 2;
+      if (r > h / 2) r = h / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    // ================= WEB AUDIO SFX =================
+    var SFX = {
+      ctx: null, masterGain: null, destNode: null, noiseBuffer: null,
+      lastTickTime: -1, triggered: {},
+
+      init: function () {
         if (!this.ctx) {
-          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          var AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
           this.ctx = new AudioCtx();
           this.masterGain = this.ctx.createGain();
           this.masterGain.gain.value = isMuted ? 0 : 0.85;
-
-          // Route to device speakers AND MediaRecorder destination stream
           this.masterGain.connect(this.ctx.destination);
           if (this.ctx.createMediaStreamDestination) {
             this.destNode = this.ctx.createMediaStreamDestination();
             this.masterGain.connect(this.destNode);
           }
-
-          // Pre-generate 2 seconds of white noise buffer for whooshes/explosions/ice
-          const sampleRate = this.ctx.sampleRate;
-          const length = sampleRate * 2;
-          this.noiseBuffer = this.ctx.createBuffer(1, length, sampleRate);
-          const data = this.noiseBuffer.getChannelData(0);
-          for (let i = 0; i < length; i++) {
-            data[i] = Math.random() * 2 - 1;
-          }
+          var sr = this.ctx.sampleRate;
+          this.noiseBuffer = this.ctx.createBuffer(1, sr * 2, sr);
+          var d = this.noiseBuffer.getChannelData(0);
+          for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
         }
-        if (this.ctx.state === "suspended") {
-          this.ctx.resume();
-        }
+        if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
       },
 
-      setMuted(muted) {
-        isMuted = muted;
+      setMuted: function (m) {
+        isMuted = m;
         if (this.masterGain && this.ctx) {
-          this.masterGain.gain.setTargetAtTime(muted ? 0 : 0.85, this.ctx.currentTime, 0.02);
+          this.masterGain.gain.setValueAtTime(m ? 0 : 0.85, this.ctx.currentTime);
         }
       },
 
-      resetTimeline() {
-        this.triggered.clear();
-        this.lastTickTime = -1;
-      },
+      reset: function () { this.triggered = {}; this.lastTickTime = -1; },
 
-      // 1. Dash / Blade Whoosh
-      whoosh(pitch = 650, dur = 0.22, vol = 0.35) {
+      whoosh: function (pitch, dur, vol) {
         if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const src = this.ctx.createBufferSource();
+        var now = this.ctx.currentTime;
+        var src = this.ctx.createBufferSource();
         src.buffer = this.noiseBuffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.Q.value = 2.4;
-        filter.frequency.setValueAtTime(pitch * 0.45, now);
-        filter.frequency.exponentialRampToValueAtTime(pitch * 1.9, now + dur * 0.45);
-        filter.frequency.exponentialRampToValueAtTime(180, now + dur);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(vol, now + dur * 0.25);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-
-        src.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.masterGain);
-        src.start(now);
-        src.stop(now + dur + 0.02);
+        var f = this.ctx.createBiquadFilter();
+        f.type = "bandpass"; f.Q.value = 2.2;
+        f.frequency.setValueAtTime(pitch * 0.5, now);
+        f.frequency.exponentialRampToValueAtTime(pitch * 1.8, now + dur * 0.5);
+        f.frequency.exponentialRampToValueAtTime(180, now + dur);
+        var g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.linearRampToValueAtTime(vol, now + dur * 0.25);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        src.connect(f); f.connect(g); g.connect(this.masterGain);
+        src.start(now); src.stop(now + dur + 0.02);
       },
 
-      // 2. Katana Slash + Metallic Ring
-      slash(heavy = false) {
+      slash: function (heavy) {
         if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        this.whoosh(heavy ? 950 : 780, heavy ? 0.28 : 0.2, heavy ? 0.48 : 0.36);
-
-        // High metallic blade shimmer
-        const osc = this.ctx.createOscillator();
+        var now = this.ctx.currentTime;
+        this.whoosh(heavy ? 950 : 760, heavy ? 0.26 : 0.19, heavy ? 0.45 : 0.34);
+        var osc = this.ctx.createOscillator();
         osc.type = "triangle";
-        osc.frequency.setValueAtTime(heavy ? 2400 : 2950, now);
-        osc.frequency.exponentialRampToValueAtTime(720, now + 0.16);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(heavy ? 0.24 : 0.16, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start(now);
-        osc.stop(now + 0.2);
+        osc.frequency.setValueAtTime(heavy ? 2400 : 2900, now);
+        osc.frequency.exponentialRampToValueAtTime(700, now + 0.16);
+        var g = this.ctx.createGain();
+        g.gain.setValueAtTime(heavy ? 0.22 : 0.15, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc.connect(g); g.connect(this.masterGain);
+        osc.start(now); osc.stop(now + 0.2);
       },
 
-      // 3. Sword Parry / Spark Clash
-      clash(freq = 1650) {
+      clash: function (freq) {
         if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        [freq, freq * 1.48, freq * 2.13].forEach((f, idx) => {
-          const osc = this.ctx.createOscillator();
+        var now = this.ctx.currentTime;
+        [freq, freq * 1.48].forEach(function (fr, idx) {
+          var osc = SFX.ctx.createOscillator();
           osc.type = idx === 0 ? "sawtooth" : "sine";
-          osc.frequency.setValueAtTime(f, now);
-          osc.frequency.exponentialRampToValueAtTime(f * 0.88, now + 0.26);
-
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(0.18 / (idx + 1), now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-
-          osc.connect(gain);
-          gain.connect(this.masterGain);
-          osc.start(now);
-          osc.stop(now + 0.3);
+          osc.frequency.setValueAtTime(fr, now);
+          var g = SFX.ctx.createGain();
+          g.gain.setValueAtTime(0.16 / (idx + 1), now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.connect(g); g.connect(SFX.masterGain);
+          osc.start(now); osc.stop(now + 0.26);
         });
       },
 
-      // 4. Heavy Punch / Sub Bass Impact
-      impact(vol = 0.55, dur = 0.35) {
+      impact: function (vol, dur) {
         if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
+        var now = this.ctx.currentTime;
+        var osc = this.ctx.createOscillator();
         osc.type = "sine";
-        osc.frequency.setValueAtTime(145, now);
+        osc.frequency.setValueAtTime(140, now);
         osc.frequency.exponentialRampToValueAtTime(34, now + dur);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(vol, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start(now);
-        osc.stop(now + dur + 0.02);
+        var g = this.ctx.createGain();
+        g.gain.setValueAtTime(vol, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        osc.connect(g); g.connect(this.masterGain);
+        osc.start(now); osc.stop(now + dur + 0.02);
       },
 
-      // 5. Cryo Cage Freeze & Shatter
-      iceFreeze() {
+      laser: function (pitch) {
         if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        [1320, 1760, 2340, 3120].forEach((f, i) => {
-          const osc = this.ctx.createOscillator();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(f, now + i * 0.035);
-          osc.frequency.exponentialRampToValueAtTime(f * 1.15, now + i * 0.035 + 0.22);
-
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(0.11, now + i * 0.035);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.035 + 0.25);
-
-          osc.connect(gain);
-          gain.connect(this.masterGain);
-          osc.start(now + i * 0.035);
-          osc.stop(now + i * 0.035 + 0.26);
-        });
-      },
-
-      iceShatter() {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        this.impact(0.48, 0.32);
-        // Crystalline high shards
-        for (let i = 0; i < 6; i++) {
-          const osc = this.ctx.createOscillator();
-          osc.type = "triangle";
-          const f = 1800 + i * 420;
-          osc.frequency.setValueAtTime(f, now + i * 0.015);
-          osc.frequency.exponentialRampToValueAtTime(f * 0.6, now + 0.22);
-
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(0.12, now + i * 0.015);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
-
-          osc.connect(gain);
-          gain.connect(this.masterGain);
-          osc.start(now + i * 0.015);
-          osc.stop(now + 0.25);
-        }
-      },
-
-      // 6. Red Laser Cutscene Zip
-      laser(pitch = 1400) {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
+        var now = this.ctx.currentTime;
+        var osc = this.ctx.createOscillator();
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(pitch, now);
         osc.frequency.exponentialRampToValueAtTime(240, now + 0.16);
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.frequency.value = 1200;
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.24, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start(now);
-        osc.stop(now + 0.19);
+        var g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.2, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc.connect(g); g.connect(this.masterGain);
+        osc.start(now); osc.stop(now + 0.19);
       },
 
-      // 7. Energy Charge Riser
-      chargeUp(dur = 1.4) {
+      chargeUp: function (dur) {
         if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
+        var now = this.ctx.currentTime;
+        var osc = this.ctx.createOscillator();
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(110, now);
-        osc.frequency.exponentialRampToValueAtTime(680, now + dur);
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = "lowpass";
-        filter.frequency.setValueAtTime(300, now);
-        filter.frequency.exponentialRampToValueAtTime(2600, now + dur);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.01, now);
-        gain.gain.linearRampToValueAtTime(0.25, now + dur * 0.85);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.05);
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start(now);
-        osc.stop(now + dur + 0.06);
+        osc.frequency.exponentialRampToValueAtTime(640, now + dur);
+        var g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.01, now);
+        g.gain.linearRampToValueAtTime(0.2, now + dur * 0.85);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.05);
+        osc.connect(g); g.connect(this.masterGain);
+        osc.start(now); osc.stop(now + dur + 0.06);
       },
 
-      // 8. Colossal Ultimate Explosion / Boom
-      explosion(dur = 0.85) {
+      explosion: function (dur) {
         if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        this.impact(0.75, dur);
-
-        const src = this.ctx.createBufferSource();
+        var now = this.ctx.currentTime;
+        this.impact(0.7, dur);
+        var src = this.ctx.createBufferSource();
         src.buffer = this.noiseBuffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = "lowpass";
-        filter.frequency.setValueAtTime(1100, now);
-        filter.frequency.exponentialRampToValueAtTime(110, now + dur);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.55, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-
-        src.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.masterGain);
-        src.start(now);
-        src.stop(now + dur + 0.02);
+        var f = this.ctx.createBiquadFilter();
+        f.type = "lowpass";
+        f.frequency.setValueAtTime(1000, now);
+        f.frequency.exponentialRampToValueAtTime(110, now + dur);
+        var g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.5, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        src.connect(f); f.connect(g); g.connect(this.masterGain);
+        src.start(now); src.stop(now + dur + 0.02);
       },
 
-      // 9. Katana Sheathe Click ("Kachink!")
-      sheatheClick() {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        [3400, 5100].forEach((f) => {
-          const osc = this.ctx.createOscillator();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(f, now);
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(0.18, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-          osc.connect(gain);
-          gain.connect(this.masterGain);
-          osc.start(now);
-          osc.stop(now + 0.13);
-        });
-      },
-
-      // 10. Subtle Action Pulse Beat (keeps rhythm alive between hits)
-      pulseBeat(accent = false) {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(accent ? 92 : 68, now);
-        osc.frequency.exponentialRampToValueAtTime(36, now + 0.11);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(accent ? 0.16 : 0.10, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start(now);
-        osc.stop(now + 0.13);
-      },
-
-      // Trigger all scripted audio events matching the 30s visual timeline
-      update(t, playing) {
+      update: function (t, playing) {
         if (!playing || !this.ctx) return;
-
-        // If user scrubbed backward, reset triggered set
-        if (t < this.lastTickTime - 0.1) {
-          this.triggered.clear();
-        }
+        if (t < this.lastTickTime - 0.1) this.triggered = {};
         this.lastTickTime = t;
 
-        // Rhythmic background pulse every 0.5s during combat acts (3s-12s & 22s-29s)
-        if ((t >= 3.0 && t < 12.1) || (t >= 22.0 && t < 29.0)) {
-          const beatIdx = Math.floor(t * 2); // 120 BPM half-second pulse
-          const beatKey = `beat_${beatIdx}`;
-          if (!this.triggered.has(beatKey)) {
-            this.triggered.add(beatKey);
-            this.pulseBeat(beatIdx % 2 === 0);
-          }
-        }
-
-        const cues = [
-          // Act 1: Start
-          { id: "a1_aura",    at: 0.25, fn: () => this.chargeUp(1.1) },
-          { id: "a1_step1",   at: 0.95, fn: () => this.whoosh(420, 0.25, 0.2) },
-          { id: "a1_crouch",  at: 2.45, fn: () => this.whoosh(520, 0.18, 0.25) },
-
-          // Act 2: Main Fight
-          { id: "a2_dash1",   at: 3.05, fn: () => this.whoosh(750, 0.22, 0.35) },
-          { id: "a2_hit1",    at: 3.42, fn: () => { this.slash(false); this.impact(0.45, 0.25); } },
-          { id: "a2_dash2",   at: 3.78, fn: () => this.whoosh(820, 0.22, 0.35) },
-          { id: "a2_hit2",    at: 4.18, fn: () => { this.slash(false); this.impact(0.45, 0.25); } },
-          { id: "a2_dash3",   at: 4.55, fn: () => this.whoosh(860, 0.22, 0.35) },
-          { id: "a2_hit3",    at: 4.95, fn: () => { this.slash(true); this.impact(0.48, 0.28); } },
-          { id: "a2_dash4",   at: 5.35, fn: () => this.whoosh(800, 0.22, 0.35) },
-          { id: "a2_hit4",    at: 5.72, fn: () => { this.slash(false); this.impact(0.46, 0.26); } },
-          { id: "a2_shot1",   at: 6.15, fn: () => this.laser(1100) },
-          { id: "a2_shot2",   at: 6.32, fn: () => this.laser(1200) },
-          { id: "a2_ice",     at: 6.75, fn: () => this.iceFreeze() },
-          { id: "a2_shatter", at: 8.12, fn: () => this.iceShatter() },
-          { id: "a2_jump",    at: 8.55, fn: () => this.whoosh(720, 0.28, 0.32) },
-          { id: "a2_hit5",    at: 9.65, fn: () => { this.slash(true); this.impact(0.5, 0.3); } },
-
-          // Act 3: Scarlet Slash Climax
-          { id: "a3_swarm",   at: 11.1, fn: () => this.whoosh(480, 0.45, 0.28) },
-          { id: "a3_black",   at: 12.2, fn: () => this.impact(0.55, 0.45) },
-          { id: "a3_lz1",     at: 12.45, fn: () => this.laser(1650) },
-          { id: "a3_lz2",     at: 12.65, fn: () => this.laser(1800) },
-          { id: "a3_lz3",     at: 12.85, fn: () => this.laser(1500) },
-          { id: "a3_lz4",     at: 13.05, fn: () => this.laser(1950) },
-          { id: "a3_lz5",     at: 13.25, fn: () => this.laser(1700) },
-          { id: "a3_eye",     at: 13.45, fn: () => this.chargeUp(0.85) },
-          { id: "a3_ult",     at: 14.35, fn: () => { this.slash(true); this.explosion(0.95); } },
-          { id: "a3_kanji",   at: 16.05, fn: () => { this.impact(0.6, 0.4); this.clash(1100); } },
-
-          // Act 4: Transition
-          { id: "a4_sheathe", at: 18.85, fn: () => this.sheatheClick() },
-          { id: "a4_warn",    at: 19.20, fn: () => this.impact(0.4, 0.45) },
-
-          // Act 5: Boss Battle
-          { id: "a5_b1",      at: 22.05, fn: () => this.whoosh(600, 0.22, 0.3) },
-          { id: "a5_b2",      at: 22.55, fn: () => this.whoosh(680, 0.22, 0.3) },
-          { id: "a5_b3",      at: 23.05, fn: () => this.whoosh(740, 0.22, 0.3) },
-          { id: "a5_b4",      at: 23.55, fn: () => { this.whoosh(520, 0.28, 0.35); this.impact(0.45, 0.3); } },
-          { id: "a5_clash1",  at: 24.75, fn: () => { this.clash(1750); this.impact(0.4, 0.2); } },
-          { id: "a5_clash2",  at: 25.25, fn: () => { this.clash(1980); this.impact(0.4, 0.2); } },
-          { id: "a5_clash3",  at: 25.75, fn: () => { this.clash(1620); this.impact(0.45, 0.22); } },
-          { id: "a5_flip",    at: 26.05, fn: () => { this.whoosh(880, 0.25, 0.32); this.laser(1350); } },
-          { id: "a5_charge",  at: 26.85, fn: () => this.chargeUp(1.55) },
-          { id: "a5_final",   at: 28.48, fn: () => { this.slash(true); this.explosion(1.05); } },
-          { id: "a5_end",     at: 29.35, fn: () => this.sheatheClick() }
+        var cues = [
+          { id: "c1", at: 0.25, fn: function () { SFX.chargeUp(1.0); } },
+          { id: "c2", at: 3.42, fn: function () { SFX.slash(false); SFX.impact(0.45, 0.25); } },
+          { id: "c3", at: 4.18, fn: function () { SFX.slash(false); SFX.impact(0.45, 0.25); } },
+          { id: "c4", at: 4.95, fn: function () { SFX.slash(true); SFX.impact(0.48, 0.28); } },
+          { id: "c5", at: 5.72, fn: function () { SFX.slash(false); SFX.impact(0.45, 0.25); } },
+          { id: "c6", at: 6.75, fn: function () { SFX.clash(1900); } },
+          { id: "c7", at: 8.12, fn: function () { SFX.explosion(0.45); } },
+          { id: "c8", at: 9.65, fn: function () { SFX.slash(true); SFX.impact(0.5, 0.3); } },
+          { id: "c9", at: 12.2, fn: function () { SFX.impact(0.55, 0.45); } },
+          { id: "c10", at: 12.5, fn: function () { SFX.laser(1650); } },
+          { id: "c11", at: 12.8, fn: function () { SFX.laser(1850); } },
+          { id: "c12", at: 13.1, fn: function () { SFX.laser(1500); } },
+          { id: "c13", at: 14.35, fn: function () { SFX.slash(true); SFX.explosion(0.95); } },
+          { id: "c14", at: 16.05, fn: function () { SFX.impact(0.6, 0.4); SFX.clash(1100); } },
+          { id: "c15", at: 18.85, fn: function () { SFX.clash(3200); } },
+          { id: "c16", at: 22.05, fn: function () { SFX.whoosh(600, 0.25, 0.3); } },
+          { id: "c17", at: 24.75, fn: function () { SFX.clash(1750); SFX.impact(0.4, 0.2); } },
+          { id: "c18", at: 25.25, fn: function () { SFX.clash(1980); SFX.impact(0.4, 0.2); } },
+          { id: "c19", at: 25.75, fn: function () { SFX.clash(1620); SFX.impact(0.45, 0.22); } },
+          { id: "c20", at: 26.85, fn: function () { SFX.chargeUp(1.55); } },
+          { id: "c21", at: 28.48, fn: function () { SFX.slash(true); SFX.explosion(1.0); } }
         ];
-
-        for (const cue of cues) {
-          if (!this.triggered.has(cue.id) && t >= cue.at && t <= cue.at + 0.18) {
-            this.triggered.add(cue.id);
-            cue.fn();
+        for (var i = 0; i < cues.length; i++) {
+          var c = cues[i];
+          if (!this.triggered[c.id] && t >= c.at && t <= c.at + 0.18) {
+            this.triggered[c.id] = true;
+            c.fn();
           }
         }
       }
     };
 
-    // =========================================================================
-    // 1. DETERMINISTIC MATH & EASING HELPERS
-    // =========================================================================
-    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-    const lerp = (a, b, t) => a + (b - a) * clamp(t, 0, 1);
-    const invLerp = (a, b, v) => clamp((v - a) / (b - a), 0drawDustBurst(t, triggerTime, x, y, dir = 1, count = 10) {
+    // ================= HELPERS =================
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    function lerp(a, b, t) { return a + (b - a) * clamp(t, 0, 1); }
+    function invLerp(a, b, v) { return clamp((v - a) / (b - a), 0, 1); }
+    function easeOutCubic(t) { t = clamp(t, 0, 1); return 1 - Math.pow(1 - t, 3); }
+    function hash(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+    function drawArena() {
+      ctx.fillStyle = "#23272c";
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = "#2e333a";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (var x = 0; x <= W; x += 64) { ctx.moveTo(x, 0); ctx.lineTo(x, FLOOR_Y); }
+      for (var y = 0; y <= FLOOR_Y; y += 64) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+
+      ctx.fillStyle = "#181a1f";
+      ctx.fillRect(0, FLOOR_Y, W, H - FLOOR_Y);
+      ctx.strokeStyle = "#3f4652";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, FLOOR_Y);
+      ctx.lineTo(W, FLOOR_Y);
+      ctx.stroke();
+    }
+
+    function drawHero(x, y, facing, pose, t, vx, alpha, isGhost, swordDrawn, bladeGlow) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.globalAlpha = alpha;
+
+      // Hào quang tối dưới chân
+      if (!isGhost) {
+        ctx.fillStyle = "rgba(15, 10, 28, 0.85)";
+        ctx.beginPath();
+        ctx.ellipse(0, -3, 48, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      var head = { x: 0, y: -96 }, neck = { x: 0, y: -80 }, hip = { x: 0, y: -42 };
+      var lFoot = { x: -18, y: 0 }, rFoot = { x: 18, y: 0 };
+      var rHand = { x: 22 * facing, y: -50 }, lHand = { x: -10 * facing, y: -46 };
+      var swordAngle = facing > 0 ? -0.5 : Math.PI + 0.5;
+
+      if (pose === "meditate") {
+        hip = { x: 0, y: -24 }; neck = { x: 0, y: -62 }; head = { x: 2 * facing, y: -78 };
+        lFoot = { x: -20, y: -4 }; rFoot = { x: 20, y: -4 };
+      } else if (pose === "dash" || pose === "slash") {
+        neck = { x: 22 * facing, y: -74 }; head = { x: 28 * facing, y: -88 };
+        lFoot = { x: -34 * facing, y: 0 }; rFoot = { x: 36 * facing, y: 0 };
+        rHand = { x: 48 * facing, y: -60 };
+        swordAngle = facing > 0 ? -0.25 : Math.PI + 0.25;
+      } else if (pose === "charge_sky") {
+        rHand = { x: 8 * facing, y: -116 };
+        swordAngle = -Math.PI / 2;
+      }
+
+      // Khăn choàng xanh dương
+      var windDir = Math.abs(vx) > 20 ? -Math.sign(vx) : -facing;
+      var scarfLen = 82 + clamp(Math.abs(vx) / 700, 0, 1.3) * 35;
+      ctx.beginPath();
+      ctx.moveTo(neck.x, neck.y + 2);
+      for (var i = 1; i <= 10; i++) {
+        var u = i / 10;
+        var sx = neck.x + windDir * u * scarfLen;
+        var sy = neck.y + 4 + Math.sin(t * 10 - u * 4) * (5 + u * 9) + u * u * 16;
+        ctx.lineTo(sx, sy);
+      }
+      for (var j = 10; j >= 1; j--) {
+        var u2 = j / 10;
+        var sx2 = neck.x + windDir * u2 * scarfLen;
+        var sy2 = neck.y + 12 + Math.sin(t * 10 - u2 * 4) * (5 + u2 * 9) + u2 * u2 * 16;
+        ctx.lineTo(sx2, sy2);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "#38bdf8";
+      ctx.fill();
+
+      // Thân thể stickman tím neon
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#160d2b";
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(hip.x, hip.y); ctx.lineTo(lFoot.x, lFoot.y);
+      ctx.moveTo(hip.x, hip.y); ctx.lineTo(rFoot.x, rFoot.y);
+      ctx.moveTo(hip.x, hip.y); ctx.lineTo(neck.x, neck.y);
+      ctx.moveTo(neck.x, neck.y + 4); ctx.lineTo(lHand.x, lHand.y);
+      ctx.moveTo(neck.x, neck.y + 4); ctx.lineTo(rHand.x, rHand.y);
+      ctx.stroke();
+
+      ctx.strokeStyle = isGhost ? "#38bdf8" : "#7c3aed";
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      // Đầu
+      ctx.fillStyle = isGhost ? "#38bdf8" : "#7c3aed";
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#160d2b";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Thanh katana
+      if (swordDrawn && pose !== "meditate") {
+        ctx.save();
+        ctx.translate(rHand.x, rHand.y);
+        ctx.rotate(swordAngle);
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(0, -6, 4, 12);
+        ctx.fillStyle = "#f8fafc";
+        ctx.shadowColor = bladeGlow;
+        ctx.shadowBlur = 12;
+        ctx.fillRect(4, -2.5, 82, 5);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    function drawWhiteMob(x, y, facing, t, seed, kb) {
+      if (kb > 1) return;
+      ctx.save();
+      var px = x, py = y, rot = 0;
+      if (kb > 0) {
+        var dir = (seed % 2 === 0 ? 1 : -1) * -facing;
+        px += dir * kb * 260;
+        py -= Math.sin(kb * Math.PI) * 110;
+        rot = dir * kb * 5;
+      }
+      ctx.translate(px, py);
+      ctx.rotate(rot);
+      var stride = kb > 0 ? 6 : Math.sin(t * 15 + seed * 2) * 14;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(0, -38); ctx.lineTo(-14 - stride, 0);
+      ctx.moveTo(0, -38); ctx.lineTo(14 + stride, 0);
+      ctx.moveTo(0, -38); ctx.lineTo(4 * facing, -74);
+      ctx.moveTo(4 * facing, -64); ctx.lineTo(22 * facing, -56);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = 5;
+      ctx.stroke();
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.beginPath();
+      ctx.arc(6 * facing, -88, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawBoss(x, y, color, t, kb) {
+      ctx.save();
+      ctx.translate(x + kb * 260, y - Math.sin(clamp(kb, 0, 1) * Math.PI) * 50);
+      ctx.rotate(kb * 0.5);
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#090d16"; ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(0, -42); ctx.lineTo(-18, 0);
+      ctx.moveTo(0, -42); ctx.lineTo(18, 0);
+      ctx.moveTo(0, -42); ctx.lineTo(0, -80);
+      ctx.moveTo(0, -68); ctx.lineTo(-22, -56);
+      ctx.stroke();
+
+      ctx.strokeStyle = color; ctx.lineWidth = 6;
+      ctx.stroke();
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(0, -95, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawPill(label, color) {
+      ctx.save();
+      ctx.font = "800 14px sans-serif";
+      var w = ctx.measureText(label).width + 40;
+      ctx.fillStyle = "rgba(15, 18, 24, 0.88)";
+      drawRoundRect(24, 22, w, 34, 17);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(40, 39, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillText(label, 52, 44);
+      ctx.restore();
+    }
+
+    function drawHud(x, y, sub, title, color) {
+      ctx.save();
+      ctx.fillStyle = "rgba(15, 18, 25, 0.86)";
+      drawRoundRect(x, y, 220, 52, 6);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.fillRect(x + 8, y + 10, 5, 32);
+      ctx.font = "700 11px sans-serif";
+      ctx.fillText(sub, x + 22, y + 20);
+      ctx.fillStyle = "#fff";
+      ctx.font = "800 20px sans-serif";
+      ctx.fillText(title, x + 22, y + 42);
+      ctx.restore();
+    }
+
+    // ================= MASTER SCENE RENDERER =================
+    function renderScene(t) {
+      t = clamp(t, 0, TOTAL_DURATION);
+
+      if (t < 3.0) {
+        drawArena();
+        drawHero(540, FLOOR_Y, 1, t < 2.45 ? "meditate" : "crouch", t, 0, 1, false, false, "#a855f7");
+        var p1 = easeOutCubic(invLerp(0.8, 2.3, t));
+        for (var i = 0; i < 4; i++) {
+          drawWhiteMob(lerp(-80 - i * 40, 150 + i * 55, p1), FLOOR_Y, 1, t, i + 1, 0);
+          drawWhiteMob(lerp(1360 + i * 40, 880 + i * 55, p1), FLOOR_Y, -1, t, i + 10, 0);
+        }
+        drawPill("01 START", "#a855f7");
+        drawHud(24, 70, "FIRST BLADE", "GEMINI NrTime, x, y, dir = 1, count = 10) {
       const dt = t - triggerTime;
       if (dt < 0 || dt > 0.55) return;
       const p = dt / 0.55;
