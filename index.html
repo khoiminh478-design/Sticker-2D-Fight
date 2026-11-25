@@ -2,103 +2,1928 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mobile 2D Action</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>2D Stickman Anime Fight - 30s (60FPS)</title>
   <style>
-    body { margin: 0; background: #111; color: #fff; font-family: sans-serif; text-align: center; }
-    canvas { width: 100%; max-width: 1280px; height: auto; background: #22262e; display: block; margin: 10px auto; }
-    button { padding: 12px 20px; font-size: 16px; border: none; border-radius: 8px; background: #38bdf8; color: #000; font-weight: bold; }
+    :root {
+      --bg: #0f1115;
+      --panel: #181b22;
+      --border: #2a303c;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #7c3aed;
+      --cyan: #38bdf8;
+      --red: #ef4444;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      gap: 10px;
+    }
+    .stage-wrap {
+      width: 100%;
+      max-width: 1280px;
+      aspect-ratio: 16 / 9;
+      background: #23272c;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65);
+      position: relative;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .controls {
+      width: 100%;
+      max-width: 1280px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .timeline-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--cyan);
+      height: 6px;
+      background: #2b313d;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .time-label {
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      color: var(--muted);
+      min-width: 96px;
+      text-align: right;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: #29303d;
+      transition: transform 0.08s ease, opacity 0.15s ease;
+    }
+    button:active {
+      transform: scale(0.97);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #playBtn {
+      background: var(--accent);
+      min-width: 105px;
+    }
+    #exportBtn {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      margin-left: auto;
+    }
+    #statusText {
+      font-size: 12px;
+      color: var(--cyan);
+      width: 100%;
+    }
+    @media (max-width: 600px) {
+      body { padding: 6px; gap: 8px; }
+      .controls { padding: 8px 10px; }
+      button { padding: 9px 11px; font-size: 13px; }
+      #exportBtn { margin-left: 0; flex: 1; }
+    }
   </style>
 </head>
 <body>
-  <canvas id="c" width="1280" height="720"></canvas>
-  <button id="recBtn">Xuất Video (5 giây)</button>
-  <p id="status">Sẵn sàng</p>
+  <div class="stage-wrap">
+    <canvas id="stage" width="1280" height="720"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="timeline-row">
+      <input id="scrubber" type="range" min="0" max="30" step="0.0166667" value="0" />
+      <span class="time-label" id="timeDisplay">00.00s / 30.00s</span>
+    </div>
+    <div class="btn-row">
+      <button id="playBtn">Pause</button>
+      <button id="replayBtn">Replay (0s)</button>
+      <button id="exportBtn">Xuất Video 30s</button>
+      <div id="statusText">Sẵn sàng • Xoay ngang điện thoại để xem và quay sắc nét nhất</div>
+    </div>
+  </div>
 
   <script>
-    const canvas = document.getElementById("c");
+    const canvas = document.getElementById("stage");
     const ctx = canvas.getContext("2d");
-    const btn = document.getElementById("recBtn");
-    const status = document.getElementById("status");
+    const W = 1280;
+    const H = 720;
+    const FLOOR_Y = 545;
+    const TOTAL_DURATION = 30.0;
+    const FPS = 60;
 
-    let frame = 0;
+    // UI Controls
+    const playBtn = document.getElementById("playBtn");
+    const replayBtn = document.getElementById("replayBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const scrubber = document.getElementById("scrubber");
+    const timeDisplay = document.getElementById("timeDisplay");
+    const statusText = document.getElementById("statusText");
 
-    function drawFighter(x, y, color, dir, lunge) {
+    let currentTime = 0;
+    let isPlaying = true;
+    let isExporting = false;
+    let lastRaf = performance.now();
+
+    // =========================================================================
+    // 1. DETERMINISTIC MATH & EASING HELPERS
+    // =========================================================================
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const lerp = (a, b, t) => a + (b - a) * clamp(t, 0, 1);
+    const invLerp = (a, b, v) => clamp((v - a) / (b - a), 0, 1);
+    const easeOutCubic = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+    const easeInOutCubic = (t) => {
+      t = clamp(t, 0, 1);
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    };
+    const hash = (n) => {
+      const x = Math.sin(n * 127.1 + 311.7) * 43758.5453123;
+      return x - Math.floor(x);
+    };
+
+    // Hitstop timestamps: brief 3-4 frame freezes (~0.06s) on heavy hits
+    const HITSTOPS = [
+      3.42, 4.18, 4.95, 5.72, 8.12, 9.65, 14.42, 24.75, 25.25, 25.75, 28.52
+    ];
+
+    function applyHitstopTime(rawT) {
+      let t = rawT;
+      for (let i = 0; i < HITSTOPS.length; i++) {
+        const hs = HITSTOPS[i];
+        const dur = 0.065;
+        if (rawT > hs && rawT < hs + dur) {
+          return hs;
+        }
+      }
+      return t;
+    }
+
+    function getScreenShake(t) {
+      const impulses = [
+        { time: 3.42, amp: 14, dur: 0.25 },
+        { time: 4.18, amp: 14, dur: 0.25 },
+        { time: 4.95, amp: 15, dur: 0.25 },
+        { time: 5.72, amp: 16, dur: 0.28 },
+        { time: 8.12, amp: 22, dur: 0.35 },
+        { time: 9.65, amp: 16, dur: 0.28 },
+        { time: 14.40, amp: 32, dur: 0.55 },
+        { time: 16.05, amp: 20, dur: 0.35 },
+        { time: 24.75, amp: 13, dur: 0.22 },
+        { time: 25.25, amp: 13, dur: 0.22 },
+        { time: 25.75, amp: 15, dur: 0.25 },
+        { time: 28.50, amp: 34, dur: 0.65 }
+      ];
+      let sx = 0, sy = 0;
+      for (const imp of impulses) {
+        if (t >= imp.time && t <= imp.time + imp.dur) {
+          const p = 1 - (t - imp.time) / imp.dur;
+          const mag = imp.amp * p * p;
+          sx += Math.sin(t * 95 + imp.time * 13) * mag;
+          sy += Math.cos(t * 112 + imp.time * 7) * mag;
+        }
+      }
+      return { sx, sy };
+    }
+
+    // =========================================================================
+    // 2. ARENA BACKGROUND & ENVIRONMENT
+    // =========================================================================
+    function drawArena(t) {
+      // Main dark arena backdrop
+      ctx.fillStyle = "#23272c";
+      ctx.fillRect(0, 0, W, H);
+
+      // Subtle architectural grid
+      ctx.strokeStyle = "#2e333a";
+      ctx.lineWidth = 1;
+      const gridSize = 64;
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += gridSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, FLOOR_Y);
+      }
+      for (let y = 0; y <= FLOOR_Y; y += gridSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+      }
+      ctx.stroke();
+
+      // Subtle ambient radial vignette
+      const grad = ctx.createRadialGradient(W * 0.5, FLOOR_Y * 0.65, 120, W * 0.5, FLOOR_Y * 0.65, 760);
+      grad.addColorStop(0, "rgba(56, 189, 248, 0.03)");
+      grad.addColorStop(1, "rgba(10, 12, 16, 0.42)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, FLOOR_Y);
+
+      // Dark floor
+      ctx.fillStyle = "#181a1f";
+      ctx.fillRect(0, FLOOR_Y, W, H - FLOOR_Y);
+
+      // Floor subtle horizontal lines for depth
+      ctx.strokeStyle = "#21252c";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      [575, 615, 665].forEach((fy) => {
+        ctx.moveTo(0, fy);
+        ctx.lineTo(W, fy);
+      });
+      ctx.stroke();
+
+      // Crisp horizon line
+      ctx.strokeStyle = "#3f4652";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, FLOOR_Y);
+      ctx.lineTo(W, FLOOR_Y);
+      ctx.stroke();
+    }
+
+    // =========================================================================
+    // 3. VFX HELPERS (SLASHES, SPARKS, DUST, AFTERIMAGES, ICE CAGE, ENERGY WAVE)
+    // =========================================================================
+    function drawSlashArc(x, y, radius, startAngle, endAngle, color, alpha, width = 16) {
+      if (alpha <= 0.01) return;
       ctx.save();
-      ctx.translate(x + lunge * dir, y);
+      ctx.translate(x, y);
+      ctx.globalAlpha = clamp(alpha, 0, 1);
+
+      // Outer glow
       ctx.strokeStyle = color;
-      ctx.lineWidth = 6;
+      ctx.lineWidth = width * 1.9;
       ctx.lineCap = "round";
-
-      ctx.beginPath(); ctx.arc(0, -86, 16, 0, Math.PI * 2); ctx.stroke(); // Đầu
-      ctx.beginPath(); ctx.moveTo(0, -70); ctx.lineTo(0, -26); ctx.stroke(); // Thân
-
-      const stride = Math.sin(frame * 0.25) * 16;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 22;
       ctx.beginPath();
-      ctx.moveTo(0, -26); ctx.lineTo(-18 - stride, 0);
-      ctx.moveTo(0, -26); ctx.lineTo(18 + stride, 0);
+      ctx.arc(0, 0, radius, startAngle, endAngle);
       ctx.stroke();
 
+      // Bright inner core
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = width * 0.55;
       ctx.beginPath();
-      ctx.moveTo(0, -58);
-      ctx.lineTo(34 * dir, -66 - lunge * 0.35);
+      ctx.arc(0, 0, radius, startAngle + 0.08, endAngle - 0.08);
       ctx.stroke();
+
       ctx.restore();
     }
 
-    function loop() {
-      frame++;
-      const cycle = frame % 90;
-      const lunge = cycle < 14 ? Math.sin((cycle / 14) * Math.PI) * 75 : 0;
+    function drawSparkBurst(t, triggerTime, x, y, color = "#fde047", count = 20, speedScale = 1) {
+      const dt = t - triggerTime;
+      if (dt < 0 || dt > 0.45) return;
+      const p = dt / 0.45;
+      ctx.save();
+      for (let i = 0; i < count; i++) {
+        const ang = hash(triggerTime * 31 + i * 1.7) * Math.PI * 2;
+        const spd = (180 + hash(triggerTime * 19 + i * 3.1) * 420) * speedScale;
+        const px = x + Math.cos(ang) * spd * dt;
+        const py = y + Math.sin(ang) * spd * dt + 280 * dt * dt;
+        const tailX = px - Math.cos(ang) * 18 * (1 - p);
+        const tailY = py - Math.sin(ang) * 18 * (1 - p);
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Sàn đấu
-      ctx.fillStyle = "#181b20";
-      ctx.fillRect(0, 500, canvas.width, 220);
-
-      drawFighter(430, 500, "#a855f7", 1, lunge);
-      drawFighter(850, 500, "#f8fafc", -1, 0);
-
-      // Vệt chém
-      if (cycle >= 10 && cycle <= 24) {
-        const alpha = 1 - (cycle - 10) / 14;
-        ctx.save();
-        ctx.strokeStyle = "#38bdf8";
-        ctx.globalAlpha = alpha;
-        ctx.lineWidth = 10 * alpha;
+        ctx.globalAlpha = (1 - p) * 0.95;
+        ctx.strokeStyle = i % 3 === 0 ? "#ffffff" : color;
+        ctx.lineWidth = 2.6 * (1 - p * 0.5);
         ctx.beginPath();
-        ctx.arc(640, 445, 95, -0.75, 0.75);
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawDustBurst(t, triggerTime, x, y, dir = 1, count = 10) {
+      const dt = t - triggerTime;
+      if (dt < 0 || dt > 0.55) return;
+      const p = dt / 0.55;
+      ctx.save();
+      for (let i = 0; i < count; i++) {
+        const spread = (hash(triggerTime * 11 + i * 2.3) - 0.3) * 140 * -dir;
+        const lift = hash(triggerTime * 17 + i * 4.1) * 55;
+        const cx = x + spread * easeOutCubic(p);
+        const cy = y - 6 - lift * easeOutCubic(p);
+        const r = (8 + hash(i * 9.2) * 14) * (1 - p * 0.35);
+
+        ctx.globalAlpha = (1 - p) * 0.42;
+        ctx.fillStyle = "#cbd5e1";
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawImpactFlash(t, triggerTime, color = "#ffffff", maxAlpha = 0.45, dur = 0.14) {
+      const dt = t - triggerTime;
+      if (dt < 0 || dt > dur) return;
+      const alpha = (1 - dt / dur) * maxAlpha;
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.globalAlpha = alpha;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 4. CHARACTER RENDERERS (HERO, WHITE MOBS, 4 BOSSES)
+    // =========================================================================
+    function drawHero(opts) {
+      const {
+        x, y, facing = 1, pose = "idle", t = 0,
+        vx = 0, alpha = 1, isGhost = false,
+        swordDrawn = true, bladeGlow = "#a855f7",
+        scabbardHand = false
+      } = opts;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.globalAlpha = alpha;
+
+      // Dark swirling aura ring at feet
+      if (!isGhost) {
+        ctx.save();
+        const auraGrad = ctx.createRadialGradient(0, -4, 4, 0, -4, 52);
+        auraGrad.addColorStop(0, "rgba(15, 10, 28, 0.92)");
+        auraGrad.addColorStop(0.6, "rgba(88, 28, 135, 0.38)");
+        auraGrad.addColorStop(1, "rgba(124, 58, 237, 0)");
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, -3, 52, 13, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rising purple qi wisps
+        for (let i = 0; i < 6; i++) {
+          const cycle = (t * 1.4 + i * 0.17) % 1;
+          const wx = Math.sin(t * 4 + i * 2.1) * 26;
+          const wy = -8 - cycle * 88;
+          ctx.fillStyle = i % 2 === 0 ? "#a855f7" : "#38bdf8";
+          ctx.globalAlpha = (1 - cycle) * 0.55;
+          ctx.beginPath();
+          ctx.arc(wx, wy, 2.3 * (1 - cycle), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Compute joint coordinates based on pose
+      let head = { x: 0, y: -96 };
+      let neck = { x: 0, y: -80 };
+      let hip = { x: 0, y: -42 };
+      let lKnee = { x: -12, y: -20 }, lFoot = { x: -18, y: 0 };
+      let rKnee = { x: 12, y: -20 }, rFoot = { x: 18, y: 0 };
+      let lElbow = { x: -16, y: -62 }, lHand = { x: -10, y: -46 };
+      let rElbow = { x: 16, y: -62 }, rHand = { x: 22, y: -50 };
+      let swordAngle = -0.35 * facing;
+      let swordLen = 78;
+
+      if (pose === "meditate") {
+        // Seated / kneeling meditation pose
+        hip = { x: 0, y: -24 };
+        neck = { x: 0, y: -62 };
+        head = { x: 2 * facing, y: -78 };
+        lKnee = { x: -24, y: -12 }; lFoot = { x: -8, y: -4 };
+        rKnee = { x: 24, y: -12 }; rFoot = { x: 8, y: -4 };
+        lElbow = { x: -18, y: -45 }; lHand = { x: -6, y: -33 };
+        rElbow = { x: 18, y: -45 }; rHand = { x: 8, y: -33 };
+      } else if (pose === "crouch") {
+        hip = { x: -4 * facing, y: -34 };
+        neck = { x: 6 * facing, y: -70 };
+        head = { x: 10 * facing, y: -85 };
+        lKnee = { x: -22 * facing, y: -18 }; lFoot = { x: -30 * facing, y: 0 };
+        rKnee = { x: 18 * facing, y: -16 }; rFoot = { x: 26 * facing, y: 0 };
+        lElbow = { x: -12 * facing, y: -54 }; lHand = { x: 4 * facing, y: -42 };
+        rElbow = { x: 16 * facing, y: -52 }; rHand = { x: 24 * facing, y: -44 };
+      } else if (pose === "dash") {
+        hip = { x: 6 * facing, y: -40 };
+        neck = { x: 24 * facing, y: -72 };
+        head = { x: 32 * facing, y: -85 };
+        lKnee = { x: -18 * facing, y: -24 }; lFoot = { x: -42 * facing, y: -8 };
+        rKnee = { x: 24 * facing, y: -22 }; rFoot = { x: 34 * facing, y: 0 };
+        lElbow = { x: -6 * facing, y: -62 }; lHand = { x: -24 * facing, y: -54 };
+        rElbow = { x: 34 * facing, y: -60 }; rHand = { x: 48 * facing, y: -56 };
+        swordAngle = facing > 0 ? -0.12 : Math.PI + 0.12;
+      } else if (pose === "slash") {
+        hip = { x: 8 * facing, y: -40 };
+        neck = { x: 22 * facing, y: -74 };
+        head = { x: 28 * facing, y: -88 };
+        lKnee = { x: -16 * facing, y: -20 }; lFoot = { x: -32 * facing, y: 0 };
+        rKnee = { x: 24 * facing, y: -20 }; rFoot = { x: 36 * facing, y: 0 };
+        lElbow = { x: -4 * facing, y: -62 }; lHand = { x: -18 * facing, y: -50 };
+        rElbow = { x: 36 * facing, y: -68 }; rHand = { x: 52 * facing, y: -62 };
+        swordAngle = facing > 0 ? -0.45 : Math.PI + 0.45;
+      } else if (pose === "summon") {
+        hip = { x: 0, y: -42 };
+        neck = { x: 2 * facing, y: -80 };
+        head = { x: 4 * facing, y: -96 };
+        lKnee = { x: -14, y: -20 }; lFoot = { x: -20, y: 0 };
+        rKnee = { x: 14, y: -20 }; rFoot = { x: 22, y: 0 };
+        lElbow = { x: 18 * facing, y: -78 }; lHand = { x: 38 * facing, y: -86 };
+        rElbow = { x: -14 * facing, y: -62 }; rHand = { x: -18 * facing, y: -46 };
+        swordAngle = facing > 0 ? 2.4 : 0.74;
+      } else if (pose === "charge_sky") {
+        hip = { x: 0, y: -40 };
+        neck = { x: -2 * facing, y: -78 };
+        head = { x: -2 * facing, y: -94 };
+        lKnee = { x: -16, y: -20 }; lFoot = { x: -24, y: 0 };
+        rKnee = { x: 16, y: -20 }; rFoot = { x: 24, y: 0 };
+        lElbow = { x: -14 * facing, y: -64 }; lHand = { x: -6 * facing, y: -48 };
+        rElbow = { x: 10 * facing, y: -95 }; rHand = { x: 8 * facing, y: -116 };
+        swordAngle = -Math.PI / 2;
+      } else if (pose === "sheathe") {
+        const breath = Math.sin(t * 3) * 1.5;
+        neck.y += breath;
+        head.y += breath;
+        lElbow = { x: -14 * facing, y: -58 }; lHand = { x: -6 * facing, y: -44 };
+        rElbow = { x: 12 * facing, y: -58 }; rHand = { x: -2 * facing, y: -45 };
+      } else {
+        // Idle combat stance
+        const breath = Math.sin(t * 4) * 2;
+        neck.y += breath;
+        head.y += breath;
+        lKnee = { x: -14, y: -21 }; lFoot = { x: -20, y: 0 };
+        rKnee = { x: 15, y: -21 }; rFoot = { x: 22, y: 0 };
+        lElbow = { x: -15 * facing, y: -62 }; lHand = { x: -8 * facing, y: -45 };
+        rElbow = { x: 16 * facing, y: -64 }; rHand = { x: 24 * facing, y: -54 };
+        swordAngle = facing > 0 ? -0.65 : Math.PI + 0.65;
+      }
+
+      // Flowing Sky-Blue Scarf (#38bdf8) with multi-segment wave physics
+      ctx.save();
+      const scarfBaseX = neck.x;
+      const scarfBaseY = neck.y + 4;
+      const windDir = Math.abs(vx) > 20 ? -Math.sign(vx) : -facing;
+      const speedFactor = clamp(Math.abs(vx) / 700, 0, 1.4);
+      const scarfLen = 78 + speedFactor * 42;
+
+      ctx.beginPath();
+      ctx.moveTo(scarfBaseX, scarfBaseY - 4);
+      const segs = 12;
+      for (let i = 1; i <= segs; i++) {
+        const u = i / segs;
+        const sx = scarfBaseX + windDir * u * scarfLen;
+        const wave = Math.sin(t * (9 + speedFactor * 8) - u * 4.5) * (6 + u * 11);
+        const droop = (1 - speedFactor * 0.6) * u * u * 22;
+        ctx.lineTo(sx, scarfBaseY - 4 + wave + droop);
+      }
+      for (let i = segs; i >= 1; i--) {
+        const u = i / segs;
+        const sx = scarfBaseX + windDir * u * scarfLen;
+        const wave = Math.sin(t * (9 + speedFactor * 8) - u * 4.5) * (6 + u * 11);
+        const droop = (1 - speedFactor * 0.6) * u * u * 22;
+        ctx.lineTo(sx, scarfBaseY + 6 + u * 4 + wave + droop);
+      }
+      ctx.closePath();
+      const scarfGrad = ctx.createLinearGradient(scarfBaseX, scarfBaseY, scarfBaseX + windDir * scarfLen, scarfBaseY);
+      scarfGrad.addColorStop(0, "#38bdf8");
+      scarfGrad.addColorStop(0.65, "#0ea5e9");
+      scarfGrad.addColorStop(1, "#0284c7");
+      ctx.fillStyle = scarfGrad;
+      ctx.fill();
+      ctx.restore();
+
+      // Stickman body stroke helper (dark outline + neon purple core)
+      const strokeLimbs = (drawFn) => {
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "#160d2b";
+        ctx.lineWidth = 10;
+        drawFn();
+        ctx.strokeStyle = isGhost ? "#38bdf8" : "#7c3aed";
+        ctx.lineWidth = 6.2;
+        drawFn();
+      };
+
+      // Legs
+      strokeLimbs(() => {
+        ctx.beginPath();
+        ctx.moveTo(hip.x, hip.y);
+        ctx.lineTo(lKnee.x, lKnee.y);
+        ctx.lineTo(lFoot.x, lFoot.y);
+        ctx.moveTo(hip.x, hip.y);
+        ctx.lineTo(rKnee.x, rKnee.y);
+        ctx.lineTo(rFoot.x, rFoot.y);
+        ctx.stroke();
+      });
+
+      // Torso
+      strokeLimbs(() => {
+        ctx.beginPath();
+        ctx.moveTo(hip.x, hip.y);
+        ctx.lineTo(neck.x, neck.y);
+        ctx.stroke();
+      });
+
+      // Black & Red Scabbard (Saya) at hip or in meditation hands
+      ctx.save();
+      if (pose === "meditate") {
+        ctx.translate(0, -32);
+        ctx.rotate(-0.12 * facing);
+      } else {
+        ctx.translate(hip.x - 4 * facing, hip.y + 2);
+        ctx.rotate(facing > 0 ? 2.55 : 0.59);
+      }
+      ctx.fillStyle = "#111827";
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.roundRect(-8, -3, 66, 6, 3);
+      ctx.fill();
+      ctx.stroke();
+      // Red sageo cord wrap
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(8, -3.5, 10, 7);
+      ctx.restore();
+
+      // Scarf collar ring
+      ctx.fillStyle = "#38bdf8";
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(neck.x - 9, neck.y - 3, 18, 9, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      // Head
+      ctx.fillStyle = isGhost ? "#38bdf8" : "#7c3aed";
+      ctx.strokeStyle = "#160d2b";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 14.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Glowing anime eye slit
+      if (!isGhost) {
+        ctx.fillStyle = "#e0f2fe";
+        ctx.beginPath();
+        ctx.ellipse(head.x + 6 * facing, head.y - 1, 4.2, 2.1, -0.15 * facing, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Arms
+      strokeLimbs(() => {
+        ctx.beginPath();
+        ctx.moveTo(neck.x, neck.y + 4);
+        ctx.lineTo(lElbow.x, lElbow.y);
+        ctx.lineTo(lHand.x, lHand.y);
+        ctx.moveTo(neck.x, neck.y + 4);
+        ctx.lineTo(rElbow.x, rElbow.y);
+        ctx.lineTo(rHand.x, rHand.y);
+        ctx.stroke();
+      });
+
+      // Katana Blade when drawn
+      if (swordDrawn && pose !== "meditate" && pose !== "sheathe") {
+        ctx.save();
+        ctx.translate(rHand.x, rHand.y);
+        ctx.rotate(swordAngle);
+
+        // Hilt
+        ctx.fillStyle = "#111827";
+        ctx.fillRect(-14, -2.5, 16, 5);
+        // Guard (Tsuba)
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(1, -6, 3.5, 12);
+
+        // Blade glow
+        ctx.shadowColor = bladeGlow;
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = "#f8fafc";
+        ctx.beginPath();
+        ctx.moveTo(4.5, -2.6);
+        ctx.lineTo(swordLen, -1.2);
+        ctx.lineTo(swordLen + 8, 0);
+        ctx.lineTo(swordLen, 1.8);
+        ctx.lineTo(4.5, 2.6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function drawWhiteMob(opts) {
+      const {
+        x, y, facing = -1, t = 0, seed = 1,
+        state = "run", knockbackProgress = 0,
+        weapon = "sword", alpha = 1
+      } = opts;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      let px = x;
+      let py = y;
+      let rot = 0;
+
+      if (state === "knockback") {
+        const p = clamp(knockbackProgress, 0, 1);
+        const dir = (seed % 2 === 0 ? 1 : -1) * -facing;
+        px += dir * p * (220 + hash(seed) * 180);
+        py -= Math.sin(p * Math.PI) * (95 + hash(seed * 3) * 70);
+        rot = dir * p * 5.2;
+      }
+
+      ctx.translate(px, py);
+      ctx.rotate(rot);
+
+      const stride = state === "run" ? Math.sin(t * 15 + seed * 2.1) * 15 : 6;
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      const drawStick = () => {
+        ctx.beginPath();
+        // Legs
+        ctx.moveTo(0, -38);
+        ctx.lineTo(-10 - stride * 0.5, -18);
+        ctx.lineTo(-16 - stride, 0);
+        ctx.moveTo(0, -38);
+        ctx.lineTo(10 + stride * 0.5, -18);
+        ctx.lineTo(16 + stride, 0);
+        // Torso
+        ctx.moveTo(0, -38);
+        ctx.lineTo(4 * facing, -74);
+        // Arms
+        ctx.moveTo(4 * facing, -66);
+        ctx.lineTo(-10 * facing, -52);
+        ctx.moveTo(4 * facing, -66);
+        ctx.lineTo(22 * facing, -58);
+        ctx.stroke();
+      };
+
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 8.5;
+      drawStick();
+      ctx.strokeStyle = "#f8fafc";
+      ctx.lineWidth = 5;
+      drawStick();
+
+      // Head
+      ctx.fillStyle = "#f8fafc";
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(6 * facing, -88, 12.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Weapon
+      ctx.save();
+      ctx.translate(22 * facing, -58);
+      ctx.rotate(facing > 0 ? -0.35 : Math.PI + 0.35);
+      if (weapon === "spear") {
+        ctx.strokeStyle = "#0f172a";
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(-25, 0);
+        ctx.lineTo(62, 0);
+        ctx.stroke();
+        ctx.fillStyle = "#cbd5e1";
+        ctx.beginPath();
+        ctx.moveTo(62, -4);
+        ctx.lineTo(76, 0);
+        ctx.lineTo(62, 4);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#e2e8f0";
+        ctx.strokeStyle = "#0f172a";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.rect(0, -2.2, 48, 4.4);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    function drawBoss(opts) {
+      const {
+        x, y, type = "shield", facing = -1, t = 0,
+        lunge = 0, knockback = 0, shieldBroken = false
+      } = opts;
+
+      ctx.save();
+      let px = x + lunge * facing + knockback * 260;
+      let py = y - Math.sin(clamp(knockback, 0, 1) * Math.PI) * 55;
+      let rot = knockback * 0.55;
+
+      ctx.translate(px, py);
+      ctx.rotate(rot);
+
+      const palette = {
+        shield: { main: "#10b981", glow: "#34d399" },
+        spear:  { main: "#0ea5e9", glow: "#38bdf8" },
+        sword:  { main: "#ef4444", glow: "#f87171" },
+        cloak:  { main: "#1e293b", glow: "#f59e0b" }
+      }[type];
+
+      const breath = Math.sin(t * 4.5) * 2;
+
+      // Ground shadow
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 32, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Limbs
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      const drawBody = () => {
+        ctx.beginPath();
+        ctx.moveTo(0, -42);
+        ctx.lineTo(-14, -20);
+        ctx.lineTo(-20, 0);
+        ctx.moveTo(0, -42);
+        ctx.lineTo(14, -20);
+        ctx.lineTo(20, 0);
+        ctx.moveTo(0, -42);
+        ctx.lineTo(0, -80 + breath);
+        ctx.moveTo(0, -68 + breath);
+        ctx.lineTo(22 * facing, -56 + breath);
+        ctx.moveTo(0, -68 + breath);
+        ctx.lineTo(-14 * facing, -52 + breath);
+        ctx.stroke();
+      };
+
+      ctx.strokeStyle = "#090d16";
+      ctx.lineWidth = 10;
+      drawBody();
+      ctx.strokeStyle = palette.main;
+      ctx.lineWidth = 6.2;
+      drawBody();
+
+      // Commander Black Cloak overlay
+      if (type === "cloak") {
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-6 * facing, -78 + breath);
+        ctx.lineTo(-34 * facing, -6);
+        ctx.lineTo(24 * facing, -6);
+        ctx.lineTo(8 * facing, -78 + breath);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // Head
+      ctx.fillStyle = palette.main;
+      ctx.strokeStyle = "#090d16";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, -95 + breath, 14.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Visor / eyes
+      ctx.fillStyle = palette.glow;
+      ctx.fillRect(-9, -98 + breath, 14, 4);
+
+      // Unique Boss Weapons
+      if (type === "shield" && !shieldBroken) {
+        ctx.save();
+        ctx.translate(26 * facing, -56 + breath);
+        ctx.fillStyle = "rgba(16, 185, 129, 0.28)";
+        ctx.strokeStyle = "#34d399";
+        ctx.lineWidth = 4;
+        ctx.shadowColor = "#10b981";
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 14, 42, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      } else if (type === "spear") {
+        ctx.save();
+        ctx.translate(22 * facing, -56 + breath);
+        ctx.rotate(facing > 0 ? -0.15 : Math.PI + 0.15);
+        ctx.strokeStyle = "#38bdf8";
+        ctx.shadowColor = "#0ea5e9";
+        ctx.shadowBlur = 14;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-30, 0);
+        ctx.lineTo(85, 0);
+        ctx.stroke();
+        ctx.fillStyle = "#e0f2fe";
+        ctx.beginPath();
+        ctx.moveTo(85, -7);
+        ctx.lineTo(108, 0);
+        ctx.lineTo(85, 7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      } else if (type === "sword") {
+        ctx.save();
+        ctx.translate(22 * facing, -56 + breath);
+        ctx.rotate(facing > 0 ? -0.55 : Math.PI + 0.55);
+        ctx.strokeStyle = "#ef4444";
+        ctx.shadowColor = "#ef4444";
+        ctx.shadowBlur = 16;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(84, 0);
+        ctx.stroke();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(4, 0);
+        ctx.lineTo(80, 0);
+        ctx.stroke();
+        ctx.restore();
+      } else if (type === "cloak") {
+        // Floating crimson/gold rune halo behind Commander
+        ctx.save();
+        ctx.translate(-12 * facing, -72 + breath);
+        ctx.strokeStyle = "rgba(245, 158, 11, 0.75)";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 26, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
 
-      requestAnimationFrame(loop);
+      ctx.restore();
     }
-    loop();
 
-    // Ghi hình trực tiếp từ Canvas trên điện thoại
-    btn.onclick = () => {
-      const stream = canvas.captureStream(60);
+    // =========================================================================
+    // 5. HUD & MODERN ANIME UI OVERLAYS
+    // =========================================================================
+    function drawPillStatus(label, accentColor = "#38bdf8") {
+      ctx.save();
+      ctx.font = "800 14px system-ui, sans-serif";
+      const textW = ctx.measureText(label).width;
+      const boxW = textW + 42;
+      const boxH = 34;
+      const x = 24;
+      const y = 22;
+
+      ctx.fillStyle = "rgba(15, 18, 24, 0.86)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(x, y, boxW, boxH, 999);
+      ctx.fill();
+      ctx.stroke();
+
+      // Status dot
+      ctx.fillStyle = accentColor;
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(x + 17, y + boxH / 2, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Label text
+      ctx.fillStyle = "#f8fafc";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, x + 29, y + boxH / 2 + 0.5);
+      ctx.restore();
+    }
+
+    function drawHudCard(x, y, subtitle, title, accentColor = "#38bdf8", alpha = 1) {
+      if (alpha <= 0.01) return;
+      ctx.save();
+      ctx.globalAlpha = clamp(alpha, 0, 1);
+
+      ctx.font = "800 22px system-ui, sans-serif";
+      const titleW = ctx.measureText(title).width;
+      ctx.font = "700 11px system-ui, sans-serif";
+      const subW = ctx.measureText(subtitle).width;
+      const cardW = Math.max(titleW, subW) + 46;
+      const cardH = 54;
+
+      // Dark translucent HUD card
+      ctx.fillStyle = "rgba(15, 18, 25, 0.85)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x, y, cardW, cardH, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      // Slanted colored accent bar on left edge
+      ctx.fillStyle = accentColor;
+      ctx.beginPath();
+      ctx.moveTo(x + 10, y + 10);
+      ctx.lineTo(x + 17, y + 10);
+      ctx.lineTo(x + 12, y + cardH - 10);
+      ctx.lineTo(x + 5, y + cardH - 10);
+      ctx.closePath();
+      ctx.fill();
+
+      // Subtitle
+      ctx.fillStyle = accentColor;
+      ctx.font = "700 11px system-ui, sans-serif";
+      ctx.fillText(subtitle, x + 26, y + 20);
+
+      // Bold white title
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "800 21px system-ui, sans-serif";
+      ctx.fillText(title, x + 26, y + 43);
+
+      ctx.restore();
+    }
+
+    function drawBottomToast(text, alpha = 1) {
+      if (alpha <= 0.01) return;
+      ctx.save();
+      ctx.globalAlpha = clamp(alpha, 0, 1);
+      ctx.font = "700 14px monospace";
+      const w = ctx.measureText(text).width + 44;
+      const h = 36;
+      const x = 28;
+      const y = H - 56;
+
+      ctx.fillStyle = "rgba(14, 22, 34, 0.9)";
+      ctx.strokeStyle = "#22d3ee";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#22d3ee";
+      ctx.fillRect(x, y, 5, h);
+
+      ctx.fillStyle = "#e0f2fe";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, x + 18, y + h / 2);
+      ctx.restore();
+    }
+
+    function drawKanjiSeal(x, y, char, alpha = 1, scale = 1) {
+      if (alpha <= 0.01) return;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = clamp(alpha, 0, 1);
+
+      // Outer crimson square stamp border
+      ctx.strokeStyle = "#dc2626";
+      ctx.fillStyle = "rgba(127, 29, 29, 0.22)";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.roundRect(-58, -58, 116, 116, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(239, 68, 68, 0.55)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-49, -49, 98, 98);
+
+      // Kanji character
+      ctx.fillStyle = "#ef4444";
+      ctx.shadowColor = "#dc2626";
+      ctx.shadowBlur = 16;
+      ctx.font = "900 72px serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(char, 0, 4);
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 6. SPECIAL ACT SET-PIECES (ICE CAGE, SCARLET SLASH CUTSCENE, FINAL WAVE)
+    // =========================================================================
+    function drawCryoCage(t, startT, endT, cx, cy) {
+      if (t < startT || t > endT) return;
+      const appear = easeOutCubic(invLerp(startT, startT + 0.25, t));
+      const shatter = invLerp(endT - 0.15, endT, t);
+      const scale = appear * (1 + shatter * 0.25);
+      const alpha = 1 - shatter;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = alpha;
+
+      // Faceted cyan ice prism cage
+      ctx.fillStyle = "rgba(34, 211, 238, 0.22)";
+      ctx.strokeStyle = "#22d3ee";
+      ctx.shadowColor = "#06b6d4";
+      ctx.shadowBlur = 22;
+      ctx.lineWidth = 3.5;
+
+      ctx.beginPath();
+      ctx.moveTo(0, -135);
+      ctx.lineTo(95, -80);
+      ctx.lineTo(110, 45);
+      ctx.lineTo(-110, 45);
+      ctx.lineTo(-95, -80);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Internal crystal facet lines
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(0, -135); ctx.lineTo(-35, 45);
+      ctx.moveTo(0, -135); ctx.lineTo(40, 45);
+      ctx.moveTo(-95, -80); ctx.lineTo(110, 45);
+      ctx.moveTo(95, -80); ctx.lineTo(-110, 45);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawScarletCutscene(t) {
+      // Dramatic Blackout Cut-in (12.2s to 16.0s)
+      const localT = t - 12.2;
+      ctx.save();
+      ctx.fillStyle = "#050608";
+      ctx.fillRect(0, 0, W, H);
+
+      // Subtle red speed-lines background
+      ctx.strokeStyle = "rgba(220, 38, 38, 0.16)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 24; i++) {
+        const y = (i * 31 + localT * 180) % H;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y - 45);
+        ctx.stroke();
+      }
+
+      // Phase A: Crisscrossing red laser lines (12.4s - 14.3s)
+      const lasers = [
+        { t0: 0.25, x1: 120, y1: 680, x2: 1120, y2: 90 },
+        { t0: 0.45, x1: 1160, y1: 640, x2: 180, y2: 110 },
+        { t0: 0.65, x1: 80, y1: 260, x2: 1220, y2: 490 },
+        { t0: 0.85, x1: 980, y1: 40, x2: 340, y2: 690 },
+        { t0: 1.05, x1: 220, y1: 50, x2: 1040, y2: 680 }
+      ];
+      for (const lz of lasers) {
+        if (localT >= lz.t0) {
+          const p = clamp((localT - lz.t0) / 0.14, 0, 1);
+          const fade = clamp(1 - (localT - 2.1) / 0.4, 0, 1);
+          ctx.save();
+          ctx.globalAlpha = fade;
+          ctx.strokeStyle = "#ef4444";
+          ctx.shadowColor = "#ff0033";
+          ctx.shadowBlur = 18;
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(lz.x1, lz.y1);
+          ctx.lineTo(lerp(lz.x1, lz.x2, p), lerp(lz.y1, lz.y2, p));
+          ctx.stroke();
+
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(lz.x1, lz.y1);
+          ctx.lineTo(lerp(lz.x1, lz.x2, p), lerp(lz.y1, lz.y2, p));
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      // Phase B: Glowing Anime Eye Silhouette Close-up (13.4s - 14.4s -> localT 1.2 - 2.2)
+      if (localT >= 1.15 && localT <= 2.35) {
+        const eyeAlpha = Math.sin(invLerp(1.15, 2.35, localT) * Math.PI);
+        ctx.save();
+        ctx.globalAlpha = eyeAlpha * 0.92;
+        // Dark hero head silhouette
+        ctx.fillStyle = "#120924";
+        ctx.beginPath();
+        ctx.arc(640, 370, 165, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing crimson & purple eyes
+        [-58, 58].forEach((ox, idx) => {
+          ctx.save();
+          ctx.translate(640 + ox, 355);
+          ctx.rotate(idx === 0 ? 0.14 : -0.14);
+          ctx.fillStyle = "#ff1e42";
+          ctx.shadowColor = "#ff0033";
+          ctx.shadowBlur = 28;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 34, 11, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 16, 4.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+        ctx.restore();
+      }
+
+      // Phase C: Colossal Crimson Slash & White Lightning Tear (localT 2.15 - 3.8)
+      if (localT >= 2.15) {
+        const sp = easeOutCubic(invLerp(2.15, 2.38, localT));
+        ctx.save();
+        // Giant diagonal scarlet gash
+        ctx.translate(640, 360);
+        ctx.rotate(-0.46);
+
+        const tearW = 1520 * sp;
+        const tearH = 64 * (1 - invLerp(3.2, 3.8, localT) * 0.6);
+
+        ctx.fillStyle = "#dc2626";
+        ctx.shadowColor = "#ff0033";
+        ctx.shadowBlur = 40;
+        ctx.beginPath();
+        ctx.moveTo(-tearW / 2, 0);
+        ctx.lineTo(0, -tearH);
+        ctx.lineTo(tearW / 2, 0);
+        ctx.lineTo(0, tearH);
+        ctx.closePath();
+        ctx.fill();
+
+        // White hot core
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.moveTo(-tearW * 0.46, 0);
+        ctx.lineTo(0, -tearH * 0.34);
+        ctx.lineTo(tearW * 0.46, 0);
+        ctx.lineTo(0, tearH * 0.34);
+        ctx.closePath();
+        ctx.fill();
+
+        // Jagged white lightning arcs along the slash
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 3;
+        for (let b = 0; b < 4; b++) {
+          ctx.beginPath();
+          let lx = -580 + b * 40;
+          let ly = (b % 2 === 0 ? -24 : 24);
+          ctx.moveTo(lx, ly);
+          for (let s = 1; s <= 10; s++) {
+            lx += 115;
+            ly = (hash(s * 7 + b * 13 + Math.floor(localT * 30)) - 0.5) * 95;
+            ctx.lineTo(lx, ly);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 7. MASTER TIMELINE SCENE RENDERER (0s - 30s)
+    // =========================================================================
+    function renderScene(rawT) {
+      const t = applyHitstopTime(clamp(rawT, 0, TOTAL_DURATION));
+      const { sx, sy } = getScreenShake(t);
+
+      ctx.save();
+      ctx.translate(sx, sy);
+
+      // -----------------------------------------------------------------------
+      // ACT 1: 00s - 03s (01 START)
+      // -----------------------------------------------------------------------
+      if (t < 3.0) {
+        drawArena(t);
+
+        const heroPose = t < 2.45 ? "meditate" : "crouch";
+        drawHero({ x: 540, y: FLOOR_Y, facing: 1, pose: heroPose, t, swordDrawn: false });
+
+        // Team A (left) and Team B (right) mobs rush in
+        const enterP = easeOutCubic(invLerp(0.8, 2.3, t));
+        for (let i = 0; i < 4; i++) {
+          const targetX = 150 + i * 58;
+          const startX = -80 - i * 45;
+          drawWhiteMob({
+            x: lerp(startX, targetX, enterP),
+            y: FLOOR_Y,
+            facing: 1,
+            t,
+            seed: i + 1,
+            state: enterP < 0.98 ? "run" : "idle",
+            weapon: i % 2 === 0 ? "sword" : "spear"
+          });
+        }
+        for (let i = 0; i < 4; i++) {
+          const targetX = 880 + i * 62;
+          const startX = 1360 + i * 45;
+          drawWhiteMob({
+            x: lerp(startX, targetX, enterP),
+            y: FLOOR_Y,
+            facing: -1,
+            t,
+            seed: i + 10,
+            state: enterP < 0.98 ? "run" : "idle",
+            weapon: i % 2 === 0 ? "spear" : "sword"
+          });
+        }
+
+        // Team labels
+        if (t >= 1.2) {
+          const lblAlpha = invLerp(1.2, 1.6, t);
+          ctx.save();
+          ctx.globalAlpha = lblAlpha;
+          ctx.font = "800 15px system-ui, sans-serif";
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillText("TEAM A", 210, FLOOR_Y - 125);
+          ctx.fillText("TEAM B", 940, FLOOR_Y - 125);
+          ctx.restore();
+        }
+
+        drawPillStatus("01 START", "#a855f7");
+        drawHudCard(24, 72, "FIRST BLADE", "GEMINI NEON", "#a855f7", invLerp(0.2, 0.7, t));
+      }
+
+      // -----------------------------------------------------------------------
+      // ACT 2: 03s - 11s (02 MAIN FIGHT)
+      // -----------------------------------------------------------------------
+      else if (t < 11.0) {
+        drawArena(t);
+
+        // Hero movement & dash choreography
+        let hx = 540, hy = FLOOR_Y, facing = 1, pose = "idle", vx = 0;
+        if (t < 3.5) {
+          const p = easeOutCubic(invLerp(3.0, 3.45, t));
+          hx = lerp(540, 860, p);
+          facing = 1; pose = "slash"; vx = 900;
+        } else if (t < 4.3) {
+          const p = easeOutCubic(invLerp(3.75, 4.2, t));
+          hx = lerp(860, 260, p);
+          facing = -1; pose = "slash"; vx = -1100;
+        } else if (t < 5.1) {
+          const p = easeOutCubic(invLerp(4.5, 4.98, t));
+          hx = lerp(260, 940, p);
+          facing = 1; pose = "dash"; vx = 1150;
+        } else if (t < 6.0) {
+          const p = easeOutCubic(invLerp(5.3, 5.75, t));
+          hx = lerp(940, 340, p);
+          facing = -1; pose = "slash"; vx = -950;
+        } else if (t < 8.4) {
+          hx = 340; facing = 1; pose = "summon"; vx = 0;
+        } else if (t < 9.8) {
+          const p = easeOutCubic(invLerp(8.5, 9.65, t));
+          hx = lerp(340, 920, p);
+          hy = FLOOR_Y - Math.sin(p * Math.PI) * 90;
+          facing = 1; pose = "slash"; vx = 850;
+        } else {
+          const p = easeOutCubic(invLerp(9.8, 10.8, t));
+          hx = lerp(920, 640, p);
+          facing = -1; pose = "idle"; vx = -350 * (1 - p);
+        }
+
+        // Afterimage trail during fast dashes
+        if (Math.abs(vx) > 400) {
+          for (let g = 1; g <= 3; g++) {
+            drawHero({
+              x: hx - Math.sign(vx) * g * 38,
+              y: hy,
+              facing,
+              pose: "dash",
+              t,
+              vx,
+              alpha: 0.32 - g * 0.08,
+              isGhost: true
+            });
+          }
+        }
+
+        // Wave 1 Mobs (knocked back at scripted hit times)
+        const mobs = [
+          { x: 840, f: -1, hitT: 3.42, s: 1 },
+          { x: 930, f: -1, hitT: 3.42, s: 2 },
+          { x: 250, f: 1,  hitT: 4.18, s: 3 },
+          { x: 180, f: 1,  hitT: 4.18, s: 4 },
+          { x: 960, f: -1, hitT: 4.95, s: 5 },
+          { x: 320, f: 1,  hitT: 5.72, s: 6 },
+          // Cluster trapped in Cryo Cage (6.8s - 8.12s)
+          { x: 880, f: -1, hitT: 8.12, s: 7 },
+          { x: 925, f: -1, hitT: 8.12, s: 8 },
+          { x: 970, f: -1, hitT: 8.12, s: 9 },
+          // Straggler hit at 9.65s
+          { x: 910, f: -1, hitT: 9.65, s: 10 }
+        ];
+
+        for (const m of mobs) {
+          const kb = t > m.hitT ? (t - m.hitT) / 0.75 : 0;
+          if (kb <= 1.0) {
+            drawWhiteMob({
+              x: m.x,
+              y: FLOOR_Y,
+              facing: m.f,
+              t,
+              seed: m.s,
+              state: kb > 0 ? "knockback" : "run",
+              knockbackProgress: kb,
+              weapon: m.s % 2 === 0 ? "spear" : "sword"
+            });
+          }
+        }
+
+        // Incoming enemy projectiles blocked by Cryo Cage (6.2s - 6.9s)
+        if (t >= 6.1 && t <= 6.95) {
+          for (let b = 0; b < 4; b++) {
+            const bp = invLerp(6.1 + b * 0.12, 6.85, t);
+            if (bp > 0 && bp < 1) {
+              const bx = lerp(850, 790, bp);
+              const by = FLOOR_Y - 58 - b * 8;
+              ctx.save();
+              ctx.fillStyle = "#f97316";
+              ctx.shadowColor = "#f97316";
+              ctx.shadowBlur = 10;
+              ctx.beginPath();
+              ctx.ellipse(bx, by, 14, 3.5, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          }
+        }
+
+        // Cryo Crystal Cage
+        drawCryoCage(t, 6.75, 8.28, 925, FLOOR_Y - 45);
+
+        // Draw Hero
+        drawHero({ x: hx, y: hy, facing, pose, t, vx, swordDrawn: true });
+
+        // Slash arcs & Sparks & Dust
+        if (t >= 3.35 && t <= 3.65) {
+          drawSlashArc(850, FLOOR_Y - 52, 95, -0.9, 0.85, "#a855f7", 1 - (t - 3.35) / 0.3, 18);
+        }
+        if (t >= 4.12 && t <= 4.42) {
+          drawSlashArc(260, FLOOR_Y - 52, 95, Math.PI - 0.85, Math.PI + 0.9, "#38bdf8", 1 - (t - 4.12) / 0.3, 18);
+        }
+        if (t >= 4.90 && t <= 5.20) {
+          drawSlashArc(940, FLOOR_Y - 52, 100, -0.8, 0.8, "#a855f7", 1 - (t - 4.90) / 0.3, 18);
+        }
+        if (t >= 5.66 && t <= 5.96) {
+          drawSlashArc(340, FLOOR_Y - 52, 95, Math.PI - 0.8, Math.PI + 0.8, "#38bdf8", 1 - (t - 5.66) / 0.3, 18);
+        }
+        if (t >= 9.58 && t <= 9.90) {
+          drawSlashArc(915, FLOOR_Y - 68, 105, -0.7, 0.95, "#c084fc", 1 - (t - 9.58) / 0.32, 20);
+        }
+
+        drawSparkBurst(t, 3.42, 855, FLOOR_Y - 54, "#fde047", 18);
+        drawSparkBurst(t, 4.18, 250, FLOOR_Y - 54, "#38bdf8", 18);
+        drawSparkBurst(t, 4.95, 950, FLOOR_Y - 54, "#fde047", 18);
+        drawSparkBurst(t, 5.72, 330, FLOOR_Y - 54, "#38bdf8", 18);
+        drawSparkBurst(t, 8.12, 925, FLOOR_Y - 55, "#22d3ee", 32, 1.3);
+        drawSparkBurst(t, 9.65, 915, FLOOR_Y - 60, "#fde047", 20);
+
+        drawDustBurst(t, 3.02, 540, FLOOR_Y, 1, 10);
+        drawDustBurst(t, 3.76, 860, FLOOR_Y, -1, 10);
+        drawDustBurst(t, 4.52, 260, FLOOR_Y, 1, 10);
+        drawDustBurst(t, 8.52, 340, FLOOR_Y, 1, 10);
+
+        drawImpactFlash(t, 8.12, "#22d3ee", 0.35, 0.14);
+
+        // HUD
+        drawPillStatus("02 MAIN FIGHT", "#38bdf8");
+        drawHudCard(24, 72, "FIRST BLADE", "GEMINI NEON", "#a855f7", 1);
+
+        if (t >= 6.6 && t <= 9.4) {
+          const toastA = Math.min(invLerp(6.6, 6.9, t), 1 - invLerp(9.0, 9.4, t));
+          drawBottomToast("CRYO BARRIER DEPLOYED // PROJECTILES NEUTRALIZED", toastA);
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // ACT 3: 11s - 18s (03 SCARLET SLASH - CLIMAX)
+      // -----------------------------------------------------------------------
+      else if (t < 18.0) {
+        if (t < 12.2) {
+          // Swarm surrounding hero from both sides
+          drawArena(t);
+          drawHero({ x: 640, y: FLOOR_Y, facing: 1, pose: "crouch", t, swordDrawn: true, bladeGlow: "#ef4444" });
+
+          const swarmP = easeOutCubic(invLerp(11.0, 12.15, t));
+          for (let i = 0; i < 8; i++) {
+            const lx = lerp(-60 - i * 42, 240 + i * 38, swarmP);
+            drawWhiteMob({ x: lx, y: FLOOR_Y, facing: 1, t, seed: 20 + i, state: "run" });
+
+            const rx = lerp(1340 + i * 42, 1040 - i * 38, swarmP);
+            drawWhiteMob({ x: rx, y: FLOOR_Y, facing: -1, t, seed: 40 + i, state: "run", weapon: "spear" });
+          }
+
+          drawPillStatus("03 SCARLET SLASH", "#ef4444");
+          drawHudCard(24, 72, "ULTIMATE", "SCARLET SLASH", "#ef4444", invLerp(11.4, 11.9, t));
+        } else if (t < 16.0) {
+          // Dramatic Blackout Cut-in
+          drawScarletCutscene(t);
+          drawImpactFlash(t, 14.38, "#ffffff", 0.65, 0.16);
+          drawPillStatus("03 SCARLET SLASH", "#ef4444");
+          drawHudCard(24, 72, "ULTIMATE TECHNIQUE", "SCARLET SLASH", "#ef4444", 1);
+        } else {
+          // Post-cutscene aftermath: all mobs blasted away + Kanji Seal "斬" + ground smoke
+          drawArena(t);
+          const afterP = invLerp(16.0, 17.5, t);
+
+          for (let i = 0; i < 8; i++) {
+            drawWhiteMob({
+              x: 260 + i * 34,
+              y: FLOOR_Y,
+              facing: 1,
+              t,
+              seed: 20 + i,
+              state: "knockback",
+              knockbackProgress: afterP * 1.15
+            });
+            drawWhiteMob({
+              x: 1020 - i * 34,
+              y: FLOOR_Y,
+              facing: -1,
+              t,
+              seed: 40 + i,
+              state: "knockback",
+              knockbackProgress: afterP * 1.15
+            });
+          }
+
+          // Dense white ground smoke rolling under feet
+          ctx.save();
+          for (let s = 0; s < 18; s++) {
+            const spread = (s - 8.5) * 46 + Math.sin(t * 2 + s) * 14;
+            const r = 34 + (s % 4) * 12;
+            ctx.fillStyle = "rgba(226, 232, 240, 0.24)";
+            ctx.beginPath();
+            ctx.arc(640 + spread * (0.6 + afterP * 0.5), FLOOR_Y - 10 - (s % 3) * 8, r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+
+          drawHero({ x: 640, y: FLOOR_Y, facing: 1, pose: "slash", t, swordDrawn: true, bladeGlow: "#ef4444" });
+
+          // Crimson Kanji Stamp Seal "斬" on the right
+          const sealScale = lerp(1.35, 1.0, easeOutCubic(invLerp(16.05, 16.3, t)));
+          drawKanjiSeal(1040, 290, "斬", invLerp(16.0, 16.25, t), sealScale);
+
+          drawImpactFlash(t, 16.0, "#ffffff", 0.5, 0.15);
+          drawPillStatus("03 SCARLET SLASH", "#ef4444");
+          drawHudCard(24, 72, "ULTIMATE", "SCARLET SLASH", "#ef4444", 1);
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // ACT 4: 18s - 22s (04 BOSS ARRIVAL / TRANSITION)
+      // -----------------------------------------------------------------------
+      else if (t < 22.0) {
+        drawArena(t);
+
+        // Hero flourishes blade, sheathes katana, walks calmly to left side
+        const walkP = easeInOutCubic(invLerp(19.2, 21.6, t));
+        const hx = lerp(640, 360, walkP);
+        const pose = t < 18.8 ? "slash" : "sheathe";
+        const vx = t >= 19.2 && t <= 21.6 ? -180 : 0;
+
+        drawHero({ x: hx, y: FLOOR_Y, facing: 1, pose, t, vx, swordDrawn: false });
+
+        // Metallic glint at katana hilt when sheathing at 18.85s
+        if (t >= 18.75 && t <= 19.25) {
+          const gp = Math.sin(invLerp(18.75, 19.25, t) * Math.PI);
+          ctx.save();
+          ctx.translate(hx - 6, FLOOR_Y - 46);
+          ctx.strokeStyle = "#ffffff";
+          ctx.shadowColor = "#38bdf8";
+          ctx.shadowBlur = 16;
+          ctx.lineWidth = 3;
+          const len = 26 * gp;
+          ctx.beginPath();
+          ctx.moveTo(-len, 0); ctx.lineTo(len, 0);
+          ctx.moveTo(0, -len); ctx.lineTo(0, len);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Center warning text: "THE FINAL SQUAD IS COMING"
+        if (t >= 19.1) {
+          const warnA = Math.min(invLerp(19.1, 19.5, t), 1 - invLerp(21.5, 22.0, t));
+          const pulse = 0.85 + Math.sin(t * 14) * 0.15;
+          ctx.save();
+          ctx.globalAlpha = warnA * pulse;
+
+          // Warning banner strip
+          ctx.fillStyle = "rgba(127, 29, 29, 0.35)";
+          ctx.fillRect(0, 290, W, 86);
+          ctx.strokeStyle = "#f97316";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 290); ctx.lineTo(W, 290);
+          ctx.moveTo(0, 376); ctx.lineTo(W, 376);
+          ctx.stroke();
+
+          ctx.font = "900 34px system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#fb923c";
+          ctx.shadowColor = "#ea580c";
+          ctx.shadowBlur = 22;
+          ctx.fillText("THE FINAL SQUAD IS COMING", W / 2, 333);
+          ctx.restore();
+        }
+
+        drawPillStatus("04 BOSS ARRIVAL", "#f97316");
+        drawHudCard(24, 72, "FIRST BLADE", "GEMINI NEON", "#a855f7", 1);
+      }
+
+      // -----------------------------------------------------------------------
+      // ACT 5: 22s - 30s (05 BOSS BATTLE)
+      // -----------------------------------------------------------------------
+      else {
+        drawArena(t);
+
+        // 4 Bosses arrive sequentially from right (22.0s - 24.2s)
+        const bosses = [
+          { type: "shield", arriveT: 22.0, homeX: 810, sub: "VANGUARD", name: "AEGIS WARDEN", color: "#10b981" },
+          { type: "spear",  arriveT: 22.5, homeX: 915, sub: "STRIKER",  name: "VOLT LANCER",  color: "#0ea5e9" },
+          { type: "sword",  arriveT: 23.0, homeX: 1020, sub: "DUELIST", name: "CRIMSON EDGE", color: "#ef4444" },
+          { type: "cloak",  arriveT: 23.5, homeX: 1130, sub: "BOSS",    name: "CLAUDE OPUS",  color: "#f59e0b" }
+        ];
+
+        // Hero choreography during Boss Battle
+        let hx = 360, hy = FLOOR_Y, hFacing = 1, hPose = "idle", hVx = 0, swordDrawn = true;
+        if (t < 24.4) {
+          hx = 360; hPose = "idle";
+        } else if (t < 26.0) {
+          // Rapid forward clash parrying Sword & Spear Bosses
+          const clashP = easeOutCubic(invLerp(24.4, 24.75, t));
+          hx = lerp(360, 690, clashP);
+          hPose = Math.floor(t * 8) % 2 === 0 ? "slash" : "crouch";
+          hVx = clashP < 0.95 ? 850 : 0;
+        } else if (t < 26.8) {
+          // Agile backflip retreat dodging projectiles
+          const flipP = invLerp(26.0, 26.8, t);
+          hx = lerp(690, 250, easeInOutCubic(flipP));
+          hy = FLOOR_Y - Math.sin(flipP * Math.PI) * 115;
+          hPose = "dash";
+          hVx = -750;
+        } else if (t < 28.45) {
+          // Charging crimson-black energy sphere overhead
+          hx = 250; hy = FLOOR_Y;
+          hPose = "charge_sky";
+        } else if (t < 29.25) {
+          // Unleashing massive horizontal slash wave
+          const lungeP = easeOutCubic(invLerp(28.45, 28.65, t));
+          hx = lerp(250, 380, lungeP);
+          hPose = "slash";
+          hVx = lungeP < 0.9 ? 650 : 0;
+        } else {
+          // Final victorious sheathing stance at 30s
+          hx = 380;
+          hPose = "sheathe";
+          swordDrawn = false;
+        }
+
+        // Boss lunges & final knockback
+        const finalBlastP = t >= 28.5 ? easeOutCubic(invLerp(28.5, 29.6, t)) : 0;
+
+        bosses.forEach((b, idx) => {
+          const arrP = easeOutCubic(invLerp(b.arriveT, b.arriveT + 0.45, t));
+          if (arrP <= 0) return;
+          const bx = lerp(1360, b.homeX, arrP);
+
+          // Sword & Spear bosses lunge forward during 24.5s - 26.1s
+          let lunge = 0;
+          if ((b.type === "sword" || b.type === "spear") && t >= 24.45 && t <= 26.2) {
+            lunge = Math.sin(invLerp(24.45, 26.2, t) * Math.PI) * 180;
+          }
+
+          drawBoss({
+            x: bx,
+            y: FLOOR_Y,
+            type: b.type,
+            facing: -1,
+            t,
+            lunge,
+            knockback: finalBlastP * (1.1 - idx * 0.08),
+            shieldBroken: t >= 28.55
+          });
+
+          drawDustBurst(t, b.arriveT + 0.42, b.homeX, FLOOR_Y, -1, 8);
+        });
+
+        // Clash sparks (24.75s, 25.25s, 25.75s)
+        drawSparkBurst(t, 24.75, 745, FLOOR_Y - 58, "#fde047", 22);
+        drawSparkBurst(t, 25.25, 755, FLOOR_Y - 64, "#ef4444", 22);
+        drawSparkBurst(t, 25.75, 750, FLOOR_Y - 52, "#38bdf8", 24);
+        if (t >= 24.7 && t <= 25.9) {
+          drawSlashArc(735, FLOOR_Y - 56, 85, -0.8, 0.8, "#a855f7", 0.75, 14);
+        }
+
+        // Boss energy projectiles during Hero backflip (26.05s - 26.75s)
+        if (t >= 26.05 && t <= 26.75) {
+          for (let pIdx = 0; pIdx < 4; pIdx++) {
+            const pp = invLerp(26.05 + pIdx * 0.1, 26.75, t);
+            if (pp > 0 && pp < 1) {
+              const px = lerp(880, 120, pp);
+              const py = FLOOR_Y - 42 - pIdx * 12;
+              ctx.save();
+              ctx.strokeStyle = pIdx % 2 === 0 ? "#38bdf8" : "#ef4444";
+              ctx.shadowColor = ctx.strokeStyle;
+              ctx.shadowBlur = 12;
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(px, py);
+              ctx.lineTo(px + 44, py);
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+        }
+
+        // Crimson-Black Energy Orb Charging Overhead (26.8s - 28.48s)
+        if (t >= 26.8 && t <= 28.5) {
+          const chargeP = easeOutCubic(invLerp(26.8, 28.2, t));
+          const orbX = hx + 8;
+          const orbY = FLOOR_Y - 195;
+          const orbR = 12 + chargeP * 44 + Math.sin(t * 35) * 3;
+
+          ctx.save();
+          // Outer crimson aura
+          const orbGrad = ctx.createRadialGradient(orbX, orbY, 4, orbX, orbY, orbR * 1.9);
+          orbGrad.addColorStop(0, "#09090b");
+          orbGrad.addColorStop(0.45, "#dc2626");
+          orbGrad.addColorStop(0.8, "rgba(239, 68, 68, 0.45)");
+          orbGrad.addColorStop(1, "rgba(239, 68, 68, 0)");
+          ctx.fillStyle = orbGrad;
+          ctx.beginPath();
+          ctx.arc(orbX, orbY, orbR * 1.9, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Dark core with red rim
+          ctx.fillStyle = "#09090b";
+          ctx.strokeStyle = "#ef4444";
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.arc(orbX, orbY, orbR * 0.65, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Inward energy particles
+          for (let k = 0; k < 14; k++) {
+            const pc = (t * 2.5 + k * 0.07) % 1;
+            const ang = k * 2.4 + t * 4;
+            const dist = (1 - pc) * 140;
+            ctx.fillStyle = k % 2 === 0 ? "#ef4444" : "#ffffff";
+            ctx.beginPath();
+            ctx.arc(orbX + Math.cos(ang) * dist, orbY + Math.sin(ang) * dist, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        // Colossal Black-and-Crimson Crescent Sword Wave (28.48s - 29.4s)
+        if (t >= 28.48 && t <= 29.4) {
+          const waveP = easeOutCubic(invLerp(28.48, 29.15, t));
+          const waveAlpha = 1 - invLerp(29.0, 29.4, t);
+          const wx = lerp(390, 1340, waveP);
+          const wy = FLOOR_Y - 75;
+
+          ctx.save();
+          ctx.globalAlpha = waveAlpha;
+          ctx.translate(wx, wy);
+
+          // Outer crimson crescent beam
+          ctx.fillStyle = "#dc2626";
+          ctx.shadowColor = "#ff0033";
+          ctx.shadowBlur = 35;
+          ctx.beginPath();
+          ctx.arc(-40, 0, 145, -1.05, 1.05);
+          ctx.arc(-85, 0, 125, 1.05, -1.05, true);
+          ctx.closePath();
+          ctx.fill();
+
+          // Inner pitch-black crescent core
+          ctx.fillStyle = "#09090b";
+          ctx.beginPath();
+          ctx.arc(-48, 0, 132, -0.95, 0.95);
+          ctx.arc(-78, 0, 118, 0.95, -0.95, true);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        drawSparkBurst(t, 28.55, 810, FLOOR_Y - 65, "#10b981", 30, 1.4);
+        drawSparkBurst(t, 28.65, 960, FLOOR_Y - 65, "#ef4444", 32, 1.4);
+        drawImpactFlash(t, 28.50, "#ef4444", 0.42, 0.16);
+
+        // Draw Hero
+        drawHero({
+          x: hx,
+          y: hy,
+          facing: hFacing,
+          pose: hPose,
+          t,
+          vx: hVx,
+          swordDrawn,
+          bladeGlow: t >= 26.8 ? "#ef4444" : "#a855f7"
+        });
+
+        // HUD Status & Boss Nameplates
+        drawPillStatus("05 BOSS BATTLE", "#ef4444");
+        drawHudCard(24, 72, "FIRST BLADE", "GEMINI NEON", "#a855f7", 1);
+
+        // Show active arriving Boss HUD card on top-right
+        for (let i = bosses.length - 1; i >= 0; i--) {
+          const b = bosses[i];
+          if (t >= b.arriveT && t <= b.arriveT + 1.8) {
+            const cardA = Math.min(invLerp(b.arriveT, b.arriveT + 0.2, t), 1 - invLerp(b.arriveT + 1.5, b.arriveT + 1.8, t));
+            drawHudCard(W - 260, 24, b.sub, b.name, b.color, cardA);
+            break;
+          }
+        }
+        // Keep Commander card visible during climax
+        if (t >= 25.3) {
+          drawHudCard(W - 260, 24, "BOSS", "CLAUDE OPUS", "#f59e0b", invLerp(25.3, 25.7, t));
+        }
+      }
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 8. PLAYBACK LOOP, SCRUBBER & MOBILE VIDEO EXPORT (MediaRecorder)
+    // =========================================================================
+    function updateUiTime(t) {
+      scrubber.value = t.toFixed(3);
+      timeDisplay.textContent = `${t.toFixed(2).padStart(5, "0")}s / 30.00s`;
+    }
+
+    function tick(now) {
+      const dt = Math.min((now - lastRaf) / 1000, 0.1);
+      lastRaf = now;
+
+      if (!isExporting && isPlaying) {
+        currentTime += dt;
+        if (currentTime >= TOTAL_DURATION) {
+          currentTime = TOTAL_DURATION;
+          isPlaying = false;
+          playBtn.textContent = "Play";
+        }
+        updateUiTime(currentTime);
+      }
+
+      renderScene(currentTime);
+      requestAnimationFrame(tick);
+    }
+
+    playBtn.addEventListener("click", () => {
+      if (isExporting) return;
+      if (currentTime >= TOTAL_DURATION) {
+        currentTime = 0;
+      }
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? "Pause" : "Play";
+    });
+
+    replayBtn.addEventListener("click", () => {
+      if (isExporting) return;
+      currentTime = 0;
+      isPlaying = true;
+      playBtn.textContent = "Pause";
+      updateUiTime(0);
+    });
+
+    scrubber.addEventListener("input", () => {
+      if (isExporting) return;
+      isPlaying = false;
+      playBtn.textContent = "Play";
+      currentTime = parseFloat(scrubber.value);
+      updateUiTime(currentTime);
+      renderScene(currentTime);
+    });
+
+    function getSupportedMimeType() {
+      const candidates = [
+        "video/mp4;codecs=avc1",
+        "video/mp4",
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm"
+      ];
+      if (typeof MediaRecorder === "undefined") return "";
+      for (const type of candidates) {
+        if (MediaRecorder.isTypeSupported(type)) return type;
+      }
+      return "";
+    }
+
+    exportBtn.addEventListener("click", () => {
+      if (isExporting) return;
+      if (!canvas.captureStream || typeof MediaRecorder === "undefined") {
+        statusText.textContent = "Trình duyệt này không hỗ trợ captureStream. Hãy dùng tính năng Quay màn hình của điện thoại.";
+        return;
+      }
+
+      const mimeType = getSupportedMimeType();
+      const stream = canvas.captureStream(FPS);
       const chunks = [];
-      const recorder = new MediaRecorder(stream);
 
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: recorder.mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "action-video.webm"; // Trên iOS Safari sẽ tự ra định dạng hỗ trợ (mp4/mov)
-        a.click();
-        status.textContent = "Đã tải video xong!";
+      let recorder;
+      try {
+        recorder = mimeType
+          ? new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6_000_000 })
+          : new MediaRecorder(stream);
+      } catch (err) {
+        recorder = new MediaRecorder(stream);
+      }
+
+      isExporting = true;
+      isPlaying = false;
+      currentTime = 0;
+      playBtn.disabled = true;
+      replayBtn.disabled = true;
+      exportBtn.disabled = true;
+      scrubber.disabled = true;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
       };
 
-      frame = 0; // Reset về đầu cảnh
-      recorder.start();
-      status.textContent = "Đang xuất video 5 giây...";
-      setTimeout(() => recorder.stop(), 5000);
-    };
+      recorder.onstop = () => {
+        const finalMime = recorder.mimeType || mimeType || "video/webm";
+        const ext = finalMime.includes("mp4") ? "mp4" : "webm";
+        const blob = new Blob(chunks, { type: finalMime });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `stickman-fight-30s.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+        isExporting = false;
+        playBtn.disabled = false;
+        replayBtn.disabled = false;
+        exportBtn.disabled = false;
+        scrubber.disabled = false;
+        playBtn.textContent = "Play";
+        statusText.textContent = `Đã xuất xong file stickman-fight-30s.${ext}!`;
+      };
+
+      const startWall = performance.now();
+      recorder.start(250);
+
+      const exportTimer = setInterval(() => {
+        const elapsed = (performance.now() - startWall) / 1000;
+        if (elapsed >= TOTAL_DURATION) {
+          currentTime = TOTAL_DURATION;
+          updateUiTime(currentTime);
+          renderScene(currentTime);
+          clearInterval(exportTimer);
+          recorder.stop();
+        } else {
+          currentTime = elapsed;
+          updateUiTime(currentTime);
+          statusText.textContent = `Đang xuất video: ${elapsed.toFixed(1)}s / 30.0s (giữ màn hình sáng)...`;
+        }
+      }, 1000 / FPS);
+    });
+
+    // Initial render
+    renderScene(0);
+    requestAnimationFrame(tick);
   </script>
 </body>
 </html>
